@@ -5,14 +5,17 @@ import matplotlib.pylab as plt
 
 tspan = np.linspace(0, 100, int(1e4))
 s0 = np.zeros(2)
-sigma = 1
+sigma = 2
 tau_s = 1e-1
-tau_x = 100
-sparsity = 0
+tau_x = 10
+sparsity = 1
 
 rho = 0.0
-S = np.array([[1, rho], [rho, 1]]) 
-A = np.linalg.inv(S)
+theta = np.pi/8
+A = np.array([
+    [np.cos(theta), -np.sin(theta)],
+    [np.sin(theta), np.cos(theta)],
+    ])
 print(A)
 X = np.array([
     [-1 , -1],
@@ -43,7 +46,8 @@ fig, ax = plt.subplots()
 x_idx = get_x_idx(tspan)
 x = X[x_idx]
 ax.scatter(*x.T, c=x_idx, cmap='Set1')
-ax.scatter(*y.T, s=1, c=x_idx, cmap='Set1')
+print(y.shape)
+ax.scatter(*(A @ y.T), s=1, c=x_idx, cmap='Set1')
 
 ax.set_aspect(1)
 plt.show()
