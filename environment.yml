@@ -1,0 +1,8 @@
+name: mixed_time
+dependencies:
+    - python >= 3.7
+    - numpy
+    - tqdm
+    - pip
+    - pip:
+        -sdeint
