@@ -4,6 +4,7 @@ from tqdm import tqdm
 import matplotlib.pylab as plt
 from matplotlib import animation
 import os.path as osp
+from time import time
 
 class MixTSC_2d:
     def __init__(self, tau_s, tau_x, tau_A, sigma, sparsity):
@@ -29,7 +30,6 @@ class MixTSC_2d:
         return self.s_soln, self.A_soln
     def set_X(self, X):
         N, D = X.shape
-
         self.n_data = N
         self.n_dim = D
         self.X = X
@@ -62,21 +62,22 @@ class MixTSC_2d:
         x_idx = self.get_x_idx(t)
         x = self.X[x_idx]
         #dH_recontr = -A.T @ (x - A@s) * (s**2 > 1) / sigma**2
-        s0 = 1
+        s0 = 2
         S = s - np.sign(s) * s0
-        dH_recontr = -A.T @ (x - A@S) * (S*s > 0) / sigma**2
-        dH_sparse = sparsity * np.sign(s)
+        S[np.abs(s) < s0] = 0
+        dH_recontr = -A.T @ (x - A@S) * (S != 0) / sigma**2
+        dH_sparse = sparsity * np.sign(s) 
 
         ds = -(dH_recontr + dH_sparse) / self.tau_s
 
         # Getting dA
 
         A0 = A / np.linalg.norm(A, axis=0)[None, :]
-        dA = ((x - A@s)[:, None] @ s[None, :]*1 + 1e-1*(A0-A)) / self.tau_A
+        dA = ((x - A@S)[:, None] @ S[None, :]*1 + 0e-1*(A0-A)) / self.tau_A
         dsA = self.pack_sA(ds, dA)
         return dsA
     def dWsA(self, sA, t):
-        dW = np.zeros(self.n_sparse * (1 + self.n_dim))
+        dW = np.zeros(self.n_sparse * (1 + self.n_dim)) + 1e-3
         dW[:self.n_dim] = self.tau_s**(-0.5)
         return np.diag(dW)
     def unpack_sA(self, sA):
@@ -110,7 +111,9 @@ class MixTSC_2d:
             tspan = self.tspan
         assert len(s_soln) == len(tspan)
 
-        fig, ax = plt.subplots()
+        fig, axes = plt.subplots(ncols=2)
+        ax = axes[0]
+
         sx, sy = [], []
         xx, xy = [], []
         scat_s = ax.scatter(sx, sy, s=5, c='b', label=rf'$A \mathbf {{s}}$ : Reconstruction, $\tau_s = {tau_s} \tau$')
@@ -121,6 +124,11 @@ class MixTSC_2d:
         _, _, n_sparse = A_soln.shape
         line_A_1, = ax.plot([], [], c='r', label=rf'$A$ : Dictionary, $\tau_A = {tau_A} \tau$')
         line_A_2, = ax.plot([], [], c='r')
+
+        s_n = np.arange(len(s_soln[0]))
+        s_h = s_soln[0]
+        s_bar = axes[1].bar(s_n, s_h)
+        axes[1].set_ylim(-10, 10)
 
         A = A_soln[0]
         print(A.shape)
@@ -141,6 +149,7 @@ class MixTSC_2d:
 
             T = tspan[idx0:idx1]
             y = s_soln[idx0:idx1]
+            y = y - np.sign(y)
 
             ti = T[0]
             tf = T[-1] 
@@ -165,6 +174,9 @@ class MixTSC_2d:
 
             fig.suptitle(rf'Time: ${ti:.2f} \tau - {tf:.2f} \tau$')
 
+            for i, b in enumerate(s_bar):
+                b.set_height(y[0, i])
+
         anim = animation.FuncAnimation(fig, animate, frames=n_frames-1, interval=100, repeat=True)
         if dir_out is not None:
             anim.save(osp.join(dir_out, 'evolution.mp4'))
@@ -176,7 +188,7 @@ tau_s = 1e-2
 tau_x = 1
 tau_A = 1e2
 sigma = 2
-sparsity = 1
+sparsity = .1
 
 mtsc = MixTSC_2d(tau_s, tau_x, tau_A, sigma, sparsity)
 
@@ -191,6 +203,9 @@ X = np.array([
     ])
 X *= 10
 
+t0 = time()
 mtsc.train(X, tspan, n_sparse=2)
+print(time() -t0)
+assert False
 #mtsc.save_evolution(dir_out='./figures/mtsc2d')
 mtsc.save_evolution(dir_out=None, n_frames=200)

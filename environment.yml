@@ -3,6 +3,9 @@ dependencies:
     - python >= 3.7
     - numpy
     - tqdm
+    - pytorch::pytorch
+    - matplotlib
     - pip
     - pip:
         -sdeint
+
