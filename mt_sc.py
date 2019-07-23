@@ -7,58 +7,27 @@ from matplotlib import animation
 import os.path as osp
 from time import time
 
-def ito_euler(f, g, x0, tspan):
-    """
-    Solves SDE of the form:
-        dx = f(x, t) * dt + g(x, t) * dW
-    with Euler-Maruyama. 
+class MT_SC:
+    def __init__(self, n_dim, n_sparse, E):
+        self.n_dim = n_dim
+        self.n_sparse = n_sparse
+        self.E = E
 
-    args:
-        f: Function with args x, t
-        g: Function with args x, t
-        x0: Initialization of x
-        tspan: The points in time to solve the SDE
-
-    returns:
-        y - The solution to the SDE as a pytorch tensor
-
-    """
-    # Convert to torch Tensor if not already
-    if not isinstance(x0, th.Tensor):
-        x0 = th.tensor(x0).float()
-    if not isinstance(tspan, th.Tensor):
-        tspan = th.tensor(tspan).float()
-
-    # Get shape of x
-    x_shape = list(x0.shape)
-    if x_shape == []:
-        n_dim = 1
-    else:
-        n_dim = x_shape[0]
-
-    dt = tspan[1:] - tspan[:-1]
-    dW = th.zeros((len(dt), n_dim))
-    dW.normal_()
-    dW *= dt[:, None]**0.5
-
-    x = x0
-
-    if n_dim == 1:
-        y = th.zeros_like(tspan)
-    else:
-        y = th.zeros((len(tspan), n_dim))
-    y[0] = x0
-
-    for i, t in enumerate(tspan[1:]):
-        a = th.tensor(f(x, t))
-        b = th.tensor(g(x, t))
-        if n_dim == 1:
-            x = x + a * dt[i] + b * dW[i]
-        else:
-            x = x + a @ dt[i] + b @ dW[i]
-        y[i] = x
-
-    return y
+        # Initialize parameters
+        self.init_x()
+        self.init_s()
+        self.init_A()
+    def init_x(self):
+        self.x = Parameter(th.zeros(self.n_dim))
+        return self.x
+    def init_s(self):
+        self.s = Parameter(th.zeros(self.n_sparse))
+        return self.s
+    def init_A(self):
+        self.A = Parameter(th.Tensor(self.n_dim, self.n_sparse))
+        self.A.data.normal_()
+        self.A.data *= .4
+        return self.A
 
 class MixT_SC:
     def __init__(self, tau_s, tau_x, tau_A, sigma_n, sparsity, l0):
@@ -88,7 +57,6 @@ class MixT_SC:
             rand_idx = th.randperm(self.n_data)
             for n, j in enumerate(batches):
                 x_idx[t_chunks == j] = rand_idx[n]
-
         self.X_shuffled = self.X[x_idx]
     def init_s(self):
         self.s = Parameter(th.zeros(self.n_sparse))
@@ -107,7 +75,7 @@ class MixT_SC:
     def H_SS(self, A, s, x):
         s0 = self.s0
         u = (s - s0*(th.sign(s))) * (th.abs(s) > s0).float()
-        return self.H_reconstr(A, u, x) + self.H_sparse_L1_pos(s)
+        #return self.H_reconstr(A, u, x) + self.H_sparse_L1_pos(s)
         return self.H_reconstr(A, u, x) + self.H_sparse_L1(s)
     def H_L1(self, A, s, x):
         return self.H_reconstr(A, s, x) + self.H_sparse_L1(s)
@@ -167,7 +135,7 @@ class MixT_SC:
             s.data += dW[i] / self.tau_s**0.5
 
             #coupling_A_x = 1 - np.exp(-15 * self.tau_x * (t % self.tau_x))
-            coupling_A_x = t % self.tau_x > self.tau_x/5
+            coupling_A_x = t % self.tau_x > self.tau_x/8
             A.data -= coupling_A_x * A.grad * dt[i] / self.tau_A
 
             s_soln[i] = s.data
@@ -238,13 +206,13 @@ class MixT_SC:
             tf = T[-1] 
 
             A = A_soln[idx1]
-            x = self.X_shuffled[idx1]
         
             u = (y - self.s0*(np.sign(y))) * (np.abs(y) > self.s0)
             scat_s.set_offsets(u @ A.T)
             scat_s.set_array(np.linspace(0, 1, len(T)))
             scat_s.cmap = plt.cm.get_cmap('Blues')
 
+            x = self.X_shuffled[idx0:idx1]
             scat_x.set_offsets(x)
 
             for n in range(self.n_sparse):
@@ -271,10 +239,16 @@ if __name__ == '__main__':
     T_RANGE = 1e2
     T_STEPS = int(1e4)
 
+    N_DIM = 2
+    N_SPARSE = 3
+
     l1 = .5
     l0 = .8
-
     tspan = th.linspace(0, T_RANGE, T_STEPS)
+
+    mtsc = MT_SC(N_DIM, N_SPARSE, None)
+
+    assert False
     #thetas = the.tensor([0, 2 * np.pi/3, -2 * np.pi/3])
     X = th.tensor([
         [np.cos(2 *np.pi/3), np.sin(-2*np.pi/3)],
@@ -292,5 +266,5 @@ if __name__ == '__main__':
     dir_out = None
     #dir_out = './figures'
     f_out = './figures/evolution.mp4'
-    #f_out = None
+    f_out = None
     mtsc.save_evolution(s_soln, A_soln, tspan, n_frames=200, f_out=f_out)

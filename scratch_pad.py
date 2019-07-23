@@ -1,10 +1,31 @@
-import numpy as np
 import torch as th
-import matplotlib.pylab as plt
+from time import time
+import random
 
-s0=1
-s = np.linspace(-5, 5, 50)
-u = (s - s0*(np.sign(s))) * (np.abs(s) > s0)
-h = (np.abs(s) - s0) * (np.abs(s) < s0)
-plt.plot(s, h)
-plt.show()
+N = int(1e4)
+
+dW = th.zeros(N)
+a = 0
+
+t0 = time()
+dW.normal_()
+print(dW)
+
+print(time() - t0)
+for dw in dW:
+    a += dw
+print(a)
+
+print(time() - t0)
+
+print('=============')
+
+t0 = time()
+
+
+a = 0
+for dw in dW:
+    a += random.random()
+print(a)
+
+print(time() - t0)
