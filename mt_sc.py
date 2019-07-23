@@ -6,28 +6,44 @@ import matplotlib.pylab as plt
 from matplotlib import animation
 import os.path as osp
 from time import time
+from mt_sde_solver import *
 
 class MT_SC:
-    def __init__(self, n_dim, n_sparse, E):
+    def __init__(self, n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma):
         self.n_dim = n_dim
         self.n_sparse = n_sparse
-        self.E = E
 
-        # Initialize parameters
-        self.init_x()
-        self.init_s()
-        self.init_A()
-    def init_x(self):
-        self.x = Parameter(th.zeros(self.n_dim))
-        return self.x
-    def init_s(self):
-        self.s = Parameter(th.zeros(self.n_sparse))
-        return self.s
-    def init_A(self):
-        self.A = Parameter(th.Tensor(self.n_dim, self.n_sparse))
-        self.A.data.normal_()
-        self.A.data *= .4
-        return self.A
+        self.tau_s = tau_s
+        self.tau_x = tau_x
+        self.tau_A = tau_A
+
+        self.l0 = l0
+        self.l1 = l1
+        self.sigma = sigma
+
+        self.init_params()
+    def init_params(self):
+        A = get_param((self.n_dim, self.n_sparse), tau=self.tau_A, T=0)
+        s = get_param((self.n_sparse), tau=self.tau_s)
+        x = get_param((self.n_dim), tau=self.tau_x)
+
+        A.data.normal_()
+        A.data *= 4
+
+        l0 = get_param(1, tau=None, init=self.l0)
+        l1 = get_param(1, tau=None, init=self.l1)
+        sigma = get_param(1, tau=None, init=self.sigma)
+        self.params = {
+                'A' : A,
+                's' : s,
+                'x' : x,
+                'l0' : l0,
+                'l1' : l1,
+                'sigma' : sigma
+                }
+    def solve_X(self):
+        raise Exception('Implement this')
+
 
 class MixT_SC:
     def __init__(self, tau_s, tau_x, tau_A, sigma_n, sparsity, l0):
@@ -231,7 +247,21 @@ class MixT_SC:
         plt.show()
 
 if __name__ == '__main__':
+    hyper_params = {}
+    hyper_params['n_dim'] = 2
+    hyper_params['n_sparse'] = 3
+    hyper_params['tau_s'] = 1e-2
+    hyper_params['tau_x'] = 1
+    hyper_params['tau_A'] = 4e1
+    hyper_params['l0'] = .5
+    hyper_params['l1'] = .8
+    hyper_params['sigma'] = 1.
 
+    mtsc = MT_SC(**hyper_params)
+    print(mtsc.params)
+
+
+    assert False
     tau_s = 1e-2
     tau_x = 1
     tau_A = 4e1
