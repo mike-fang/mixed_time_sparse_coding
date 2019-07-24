@@ -41,9 +41,29 @@ class MT_SC:
                 'l1' : l1,
                 'sigma' : sigma
                 }
-    def solve_X(self):
-        raise Exception('Implement this')
+    def solve_X(self, X, tspan):
+        t_steps = len(tspan)
+        dt = tspan[1:] - tspan[:-1]
+        curr_idx = 0
 
+        # Initialize param evolution with t=0 values
+        param_evol = {}
+        for n, p in self.params.items():
+            if not p.requires_grad:
+                continue
+            evol = th.zeros((t_steps, *p.shape))
+            evol[0] = p
+            param_evol[n] = evol
+
+        def update_param_evol(n):
+            pass
+        """
+            for name, ev = param_evol.items():
+                ev[n] = self.params[name]
+
+        solver = MixT_SDE(self.params, E_SC_L0)
+        """
+        #for i, t in enumerate(tspan):
 
 class MixT_SC:
     def __init__(self, tau_s, tau_x, tau_A, sigma_n, sparsity, l0):
@@ -76,12 +96,13 @@ class MixT_SC:
         self.X_shuffled = self.X[x_idx]
     def init_s(self):
         self.s = Parameter(th.zeros(self.n_sparse))
+        self.s.data = th.Tensor([1, 0.])
         return self.s
     def init_A(self):
         self.A = Parameter(th.Tensor(self.n_dim, self.n_sparse))
         self.A.data.normal_()
         self.A.data *= .4
-        #self.A = Parameter(th.eye(2))
+        self.A = Parameter(th.eye(2))
         return self.A
     def get_x_idx(self, t):
         try:
@@ -131,7 +152,7 @@ class MixT_SC:
         dt = self.tspan[1:] - self.tspan[:-1]
         dW = th.zeros((len(dt), n_sparse))
         dW.normal_()
-        dW *= (2 *dt[:, None])**0.5
+        dW *= (2 *dt[:, None])**0.5 * 0
 
         if n_sparse == 1:
             #s_soln = th.zeros_like(tspan)
@@ -147,8 +168,14 @@ class MixT_SC:
             #H_total = self.H_reconstr(A, s, x) + self.H_sparse(s)
             H_total = self.H_(A, s, x)
             H_total.backward()
-            s.data -= s.grad * dt[i] / self.tau_s
-            s.data += dW[i] / self.tau_s**0.5
+            ds = -s.grad * dt[i] / self.tau_s + dW[i] /self.tau_s**0.5
+            s.data += ds
+            print('delta: ', ds)
+            print(s)
+
+            if False:
+                s.data -= s.grad * dt[i] / self.tau_s
+                s.data += dW[i] / self.tau_s**0.5
 
             #coupling_A_x = 1 - np.exp(-15 * self.tau_x * (t % self.tau_x))
             coupling_A_x = t % self.tau_x > self.tau_x/8
@@ -258,27 +285,30 @@ if __name__ == '__main__':
     hyper_params['sigma'] = 1.
 
     mtsc = MT_SC(**hyper_params)
-    print(mtsc.params)
+
+    T_RANGE = 1e2
+    T_STEPS = int(1e4)
+
+    tspan = np.linspace(0, T_RANGE, T_STEPS)
+    mtsc.solve_X(0, tspan)
 
 
-    assert False
     tau_s = 1e-2
     tau_x = 1
     tau_A = 4e1
     sigma = 1
-    T_RANGE = 1e2
-    T_STEPS = int(1e4)
+    frac = 0.1
+    T_RANGE = 1e2*frac
+    T_STEPS = int(1e4*frac)
 
     N_DIM = 2
-    N_SPARSE = 3
+    N_SPARSE = 2
 
     l1 = .5
-    l0 = .8
+    l0 = .0
     tspan = th.linspace(0, T_RANGE, T_STEPS)
 
-    mtsc = MT_SC(N_DIM, N_SPARSE, None)
 
-    assert False
     #thetas = the.tensor([0, 2 * np.pi/3, -2 * np.pi/3])
     X = th.tensor([
         [np.cos(2 *np.pi/3), np.sin(-2*np.pi/3)],
@@ -287,9 +317,10 @@ if __name__ == '__main__':
         [1, 0]
         ]).float()
     X *= 10
+    X = th.zeros((1, 2))
 
     mtsc = MixT_SC(tau_s, tau_x, tau_A, sigma, l1, l0)
-    s_soln, A_soln = mtsc.train(X, tspan, n_sparse=3)
+    s_soln, A_soln = mtsc.train(X, tspan, n_sparse=N_SPARSE)
 
     print(s_soln)
     X_evol = X[mtsc.get_x_idx(tspan)]
@@ -297,4 +328,4 @@ if __name__ == '__main__':
     #dir_out = './figures'
     f_out = './figures/evolution.mp4'
     f_out = None
-    mtsc.save_evolution(s_soln, A_soln, tspan, n_frames=200, f_out=f_out)
+    #mtsc.save_evolution(s_soln, A_soln, tspan, n_frames=200, f_out=f_out)

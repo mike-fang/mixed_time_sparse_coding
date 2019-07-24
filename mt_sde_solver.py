@@ -7,6 +7,10 @@ from matplotlib import animation
 import os.path as osp
 from time import time
 import random
+def L2_reconstr_loss(A, s, x, sigma):
+    print(f'x : {x}')
+    print(f'A@s : {A@s}')
+    return 0.5 * th.norm(x - A @ s)**2 / sigma**2
 
 def get_param(size, tau, T=1, init=None):
     param = Parameter(th.zeros(size))
@@ -25,18 +29,13 @@ def get_param(size, tau, T=1, init=None):
     param.freq = freq
     param.T = T
     return param
-def L2_reconstr_loss(A, s, x, sigma):
-    return 0.5 * th.norm(x - A @ s)**2 / sigma**2
-def E(params):
-    A = params['A']
-    s = params['s']
-    x = params['x']
-    sigma = params['sigma']
-    l0 = params['l0']
-    l1 = params['l1']
-    s0 = -th.log(1 - l0) / l1
-    u = (s - s0*(th.sign(s))) * (th.abs(s) > s0).float()
-    return L2_reconstr_loss(A, u, x, sigma) + l1 * th.norm(s, p=1)
+def shuffle_param(param, freq, tspan):
+    #freq = param.freq
+    idx = (tspan * freq).long()
+    max_idx = idx.max()
+    n_data = len(param)
+    rand_idx = th.zeros(max_idx + 1).long().random_(n_data)
+    return param[rand_idx[idx]]
 class MixT_SDE:
     def __init__(self, params, E):
         self.params = params
@@ -46,46 +45,86 @@ class MixT_SDE:
             if p.grad is not None:
                 p.grad.detach_()
                 p.grad.zero_()
-    def step(self, dt):
-        update = {}
+    def step(self, t, dt, dW=None):
+        energy = self.E(self.params, t)
         self.zero_grad()
-        self.E(self.params).backward()
+        energy.backward()
+        print('energy : ', energy)
         for n, p in self.params.items():
             if p.grad is None:
                 continue
             dtau = dt * p.freq
-
             dEdp = p.grad * dtau
-            dW = random.gauss(0, dtau**0.5)
+
+            print('name: ', n)
+            print('param: ', p.data)
+            print('dEdp: ', dEdp.data)
             if p.T > 0:
-                update[n] = -dEdp + dW * p.T
+                dW = th.zeros_like(p)
+                dW.normal_()
+                dW *= (2 * dtau)**0.5 
+                print('dtau: ', dtau)
+                print('dW: ', dW.data)
+                update[n] = -dEdp + dW * p.T 
             else:
                 update[n] = -dEdp
+            self.params[n]
+            #print(update)
+            print('--------')
 
         for n, dp in update.items():
             self.params[n].data += dp
+    def solve(self, solve_name, X, tspan):
+        solve_param = self.params[solve_name]
+        solve_freq = solve_param.freq
+
+        #Freeze solve_param evolution, it is to be driven 
+        solve_param.requires_grad = False
+        shuffled_X = shuffle_param(X, solve_freq, tspan)
+        solve_param.data = shuffled_X[0]
+
+        # Get time_differences
+        t_steps = len(tspan)
+        dt = tspan[1:] - tspan[:-1]
+        dW = np.random.random() * dt**0.5
+
+        # Initialize param evolution with t=0 values
+        param_evol = {}
+        for n, p in self.params.items():
+            if not p.requires_grad:
+                pass
+                #continue
+            evol = th.zeros((t_steps, *p.shape))
+            evol[0] = p.data
+            param_evol[n] = evol
+
+        for i, t in enumerate(tspan[1:]):
+            solve_param.data = shuffled_X[i+1]
+            self.step(t, dt[i], None)
+            for name, ev in param_evol.items():
+                ev[i+1] = self.params[name].data
+        param_evol['tspan'] = tspan
+        return param_evol
+
 
 if __name__ == '__main__':
+    n_dim = n_sparse = 2
+
     tau_s = 1e-2
     tau_x = 1
     tau_A = 4e1
-    T_RANGE = 1e2
-    T_STEPS = int(1e4)
+    
+    A = get_param((n_dim, n_sparse), tau=None, T=0)
+    s = get_param(n_sparse, tau=tau_s, T=0)
+    x = get_param(n_dim, tau=None, T=0)
+    A.data = th.eye(2)
+    x.data *= 0
+    s.data = th.Tensor((100, 0))
 
-    l1 = .5
-    l0 = .8
-    sigma = 1.
 
-    N_DIM = 2
-    N_SPARSE = 3
-
-    A = get_param((N_DIM, N_SPARSE), tau=tau_A, T=0)
-    s = get_param((N_SPARSE), tau=tau_s)
-    x = get_param((N_DIM), tau=tau_x)
-    l0 = get_param(1, tau=None, init=l0)
-    l1 = get_param(1, tau=None, init=l1)
-    sigma = get_param(1, tau=None, init=sigma)
-
+    l0 = get_param(1, tau=None, init=.5)
+    l1 = get_param(1, tau=None, init=.8)
+    sigma = get_param(1, tau=None, init=1)
     params = {
             'A' : A,
             's' : s,
@@ -95,9 +134,12 @@ if __name__ == '__main__':
             'sigma' : sigma
             }
 
-    mt_sde = MixT_SDE(params, E)
+    def E(params, t):
+        A = params['A']
+        s = params['s']
+        x = params['x']
+        sigma = params['sigma']
+        return L2_reconstr_loss(A, s, x, sigma)
+    mtsde = MixT_SDE(params, E)
     for _ in range(10):
-        print('============')
-        print(mt_sde.params)
-        mt_sde.step(.1)
-
+        mtsde.step(0, 1e-3)
