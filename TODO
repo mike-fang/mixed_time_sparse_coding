@@ -1,3 +1,6 @@
+PROBLEMS:
+1. How does this scale? Probably badly with current implementation
+
 IDEAS:
 * Parallel sampling?
 
@@ -13,3 +16,10 @@ V L0 norm
     - l1
     - l0
 - Make code faster
+- Discrete SC
+- LCA
+
+QUESTIONS:
+
+1. Why is A.T @ A sparse?
+2. What are conditions of convergence for Langevin equations

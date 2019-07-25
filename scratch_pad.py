@@ -1,5 +1,5 @@
 import numpy as np
 
-print(
-        np.random.randint(0, 10, 100)
-        )
+X = np.arange(3)
+
+print(X[2:4])

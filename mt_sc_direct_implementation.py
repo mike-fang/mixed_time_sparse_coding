@@ -4,7 +4,7 @@ from matplotlib import animation
 from time import time
 
 class MixT_SC:
-    def __init__(self, n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma):
+    def __init__(self, n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma, positive=False):
         self.n_dim = n_dim
         self.n_sparse = n_sparse
 
@@ -17,6 +17,7 @@ class MixT_SC:
         self.sigma = sigma
 
         self.s0 = -np.log(1 - l0) / l1
+        self.positive = positive
     def init_sA(self):
         A = np.random.normal(0, 0.4, size=(self.n_dim, self.n_sparse))
         s = np.zeros(self.n_sparse)
@@ -30,17 +31,25 @@ class MixT_SC:
         where_active = (np.abs(s) >= self.s0)
         u = (s - self.s0*(sign_s)) * where_active
         dE_recon = (A.T @ (A @ u - x) / self.sigma**2) * where_active
-        #dE_sparse = self.l1 * sign_s
-        dE_sparse = self.l1 * ( (s > 0) - 10*(s < 0) )
+        if self.positive:
+            dE_sparse = self.l1 * ( (s > 0) - 10*(s < 0) )
+        else:
+            dE_sparse = self.l1 * sign_s
         return dE_recon + dE_sparse
     def dEdA(self, s, x, A):
         u = (s - self.s0*(np.sign(s))) * (np.abs(s) > self.s0)
         return (A @ u - x)[:, None] @ u[None, :] / self.sigma**2
     def shuffle_X(self, X, tspan):
         n_data = len(X)
-        idx = (tspan // self.tau_x).astype(int)
+        idx = ((tspan // (self.tau_x / n_data))).astype(int)
         max_idx = idx.max()
-        rand_idx = np.random.randint(0, n_data, size=(max_idx + 1))
+        rand_idx = np.zeros(max_idx + 1, dtype=int)
+        for n in range(0, max_idx+1, n_data):
+            try:
+                rand_idx[n:n+n_data] = np.random.permutation(n_data)
+            except:
+                k = len(rand_idx[n:n_data])
+                rand_idx[n:n+n_data] = np.random.permutation(n_data)[:k]
         return X[rand_idx[idx]]
     def solve(self, X, tspan):
         # Definite dt, t_steps
@@ -156,13 +165,14 @@ class MixT_SC:
         plt.show()
 
 
-
 if __name__ == '__main__':
     tau_s = 1e1
-    tau_x = 5e2
+    tau_x = 5e2 * 4
     tau_A = 1e4
     sigma = 1
     frac = 1
+
+    print(tau_s, tau_x, tau_A)
     T_RANGE = 1e5*frac
     T_STEPS = int(T_RANGE)
 
@@ -170,19 +180,23 @@ if __name__ == '__main__':
     N_SPARSE = 3
 
     l1 = .5
-    l0 = .8
+    l0 = .5
     tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 
-    theta = [0, 2*np.pi/3, 4*np.pi/3]
+    #theta = [0, 2*np.pi/3, 4*np.pi/3]
+    theta = (np.linspace(0, 2*np.pi, N_SPARSE, endpoint=False))
     cos = np.cos(theta)
     sin = np.sin(theta)
     X = np.hstack((cos[:,None], sin[:,None]))
     X *= 10
 
     mt_sc = MixT_SC(N_DIM, N_SPARSE, tau_s, tau_x, tau_A, l0, l1, sigma)
+    mt_sc.solve_discrete(X, tspan)
     
+    assert False
     t0 = time()
     solns = mt_sc.solve(X, tspan)
+
     print(time() - t0)
-    mt_sc.save_evolution(solns)
+    mt_sc.save_evolution(solns, n_frames=1000)
 
