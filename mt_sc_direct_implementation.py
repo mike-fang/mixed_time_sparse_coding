@@ -4,7 +4,7 @@ from matplotlib import animation
 from time import time
 
 class MixT_SC:
-    def __init__(self, n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma, positive=False):
+    def __init__(self, n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch=3, positive=False):
         self.n_dim = n_dim
         self.n_sparse = n_sparse
 
@@ -15,12 +15,13 @@ class MixT_SC:
         self.l0 = l0
         self.l1 = l1
         self.sigma = sigma
+        self.n_batch = n_batch
 
         self.s0 = -np.log(1 - l0) / l1
         self.positive = positive
     def init_sA(self):
         A = np.random.normal(0, 0.4, size=(self.n_dim, self.n_sparse))
-        s = np.zeros(self.n_sparse)
+        s = np.zeros((self.n_batch, self.n_sparse))
 
         if False:
             A = np.eye(self.n_dim)
@@ -39,6 +40,19 @@ class MixT_SC:
     def dEdA(self, s, x, A):
         u = (s - self.s0*(np.sign(s))) * (np.abs(s) > self.s0)
         return (A @ u - x)[:, None] @ u[None, :] / self.sigma**2
+    def init_loader(self, X):
+        self.X = np.random.permutation(X)
+        self.batch_idx = 0
+    def get_batch(self):
+        batch_end = self.batch_idx + self.n_batch
+        batch = self.X[self.batch_idx:batch_end]
+
+        if batch_end >= len(self.X):
+            batch_end %= len(self.X)
+            self.init_loader(self.X)
+            batch = np.vstack((batch, self.X[:batch_end]))
+        self.batch_idx = batch_end
+        return batch
     def shuffle_X(self, X, tspan):
         n_data = len(X)
         idx = ((tspan // (self.tau_x / n_data))).astype(int)
@@ -52,46 +66,56 @@ class MixT_SC:
                 rand_idx[n:n+n_data] = np.random.permutation(n_data)[:k]
         return X[rand_idx[idx]]
     def solve(self, X, tspan):
+        # Start tspan at 0
+        tspan -= tspan.min()
+
         # Definite dt, t_steps
         t_steps = len(tspan)
         dT = tspan[1:] - tspan[:-1]
-
-        # Shuffle X
-        X = self.shuffle_X(X, tspan)
+        
+        # Find where to load next X batch
+        x_idx = (tspan // self.tau_x).astype(int)
+        new_batch = (x_idx[1:] - x_idx[:-1]).astype(bool)
+        self.init_loader(X)
 
         # Precalculating Wiener process
-        dW_s = np.random.normal(loc=0, scale= (2 * dT[:, None])**0.5, size=(t_steps - 1, self.n_sparse)) 
+        dW_s = np.random.normal(loc=0, scale= (2 * dT[:, None, None])**0.5, size=(t_steps - 1, self.n_batch, self.n_sparse)) 
+
         # Init params and solns
-        s, A = self.init_sA()
-        s_soln = np.zeros((t_steps, self.n_sparse))
+        S, A = self.init_sA()
+        X = self.get_batch()
+        s_soln = np.zeros((t_steps, self.n_batch, self.n_sparse))
+        x_soln = np.zeros((t_steps, self.n_batch, self.n_dim))
         A_soln = np.zeros((t_steps, self.n_dim, self.n_sparse))
-        s_soln[0] = s
+        s_soln[0] = S
         A_soln[0] = A
+        x_soln[0] = X
 
         # Iterate over time steps
-        for i, t in enumerate(tspan):
-            if i == 0:
-                continue
-            x = X[i]
-            dt = dT[i-1]
+        for i, t in enumerate(tspan[1:]):
+            # Get new batch 
+            if new_batch[i]:
+                X = self.get_batch()
+            dt = dT[i]
 
-            # Calculate gradient
-            ds = -self.dEds(s, x, A) * dt / self.tau_s + dW_s[i-1] / self.tau_s**0.5
-            dA = -self.dEdA(s, x, A) * dt / self.tau_A 
+            #Iterate over batch
+            dA = 0
+            for j in range(self.n_batch):
+                # Calculate gradient
+                ds = -self.dEds(S[j], X[j], A) * dt / self.tau_s + dW_s[i, j] / self.tau_s**0.5
+                dA += -self.dEdA(S[j], X[j], A) * dt / self.tau_A 
 
-
-            #print(self.dEds(s, x, A))
-
-            coupling_A_x = t % self.tau_x > self.tau_x/4
-            # Update variable
-            s += ds
-            A += dA * coupling_A_x
+                # Update variables
+                S[j] += ds
+            # Update changes in A all at once, maybe sequentially with each s might be better
+            A += dA / self.n_batch
 
             # Record values
-            s_soln[i] = s
-            A_soln[i] = A
+            s_soln[i+1] = S
+            A_soln[i+1] = A
+            x_soln[i+1] = X
         solns = {}
-        solns['X'] = X
+        solns['X'] = x_soln
         solns['s'] = s_soln
         solns['A'] = A_soln
         solns['T'] = tspan
@@ -107,25 +131,25 @@ class MixT_SC:
         scat_x = ax.scatter(xx, xy, s=50, c='r', label=rf'$\mathbf {{x}}$ : Data, $\tau_x = {self.tau_x}$')
 
         # Create arrows for tracking A
-        a1 = soln['A'][0, :, 0] * 5
-        a2 = soln['A'][0, :, 1] * 5
         A_arrow_0, = ax.plot([], [], c='g', label=rf'$A$ : Dictionary, $\tau_A = {self.tau_A} \tau$')
         A_arrows = [A_arrow_0]
         for A in range(self.n_sparse - 1):
             A_arrow, = ax.plot([], [], c='g')
             A_arrows.append(A_arrow)
 
-        # Create bar plot for sparse elements
-        s_n = np.arange(len(soln['s'][0]))
-        s_h = soln['s'][0]
-        s_bar = axes[1].bar(s_n, s_h, fc='k')
-        axes[1].set_ylim(-10, 10)
-        axes[1].set_xticks(np.arange(self.n_sparse))
-
         ax.set_xlim(-15, 15)
         ax.set_ylim(-15, 15)
         ax.set_aspect(1)
         fig.legend(loc='lower right')
+
+        if False:
+            # Create bar plot for sparse elements
+            s_n = np.arange(len(soln['s'][0]))
+            s_h = soln['s'][0]
+            s_bar = axes[1].bar(s_n, s_h, fc='k')
+            axes[1].set_ylim(-10, 10)
+            axes[1].set_xticks(np.arange(self.n_sparse))
+
 
         idx_stride = int(len(soln['s']) // n_frames)
         def animate(nf):
@@ -133,8 +157,8 @@ class MixT_SC:
             idx1 = (nf + 1) * idx_stride 
 
             T = soln['T'][idx0:idx1]
-            y = soln['s'][idx0:idx1]
-            y = y - np.sign(y)
+            y = soln['s'][idx0:idx1].reshape((-1, self.n_sparse))
+            #y = y - np.sign(y)
 
             ti = T[0]
             tf = T[-1] 
@@ -146,7 +170,7 @@ class MixT_SC:
             scat_s.set_array(np.linspace(0, 1, len(T)))
             scat_s.cmap = plt.cm.get_cmap('Blues')
 
-            x = soln['X'][idx0:idx1]
+            x = soln['X'][idx0:idx1].reshape((-1, self.n_dim))
             scat_x.set_offsets(x)
 
             for n in range(self.n_sparse):
@@ -156,24 +180,25 @@ class MixT_SC:
 
             fig.suptitle(rf'Time: ${ti:.2f} \tau - {tf:.2f} \tau$')
 
-            for i, b in enumerate(s_bar):
-                b.set_height(u[0, i])
+            if False:
+                for i, b in enumerate(s_bar):
+                    b.set_height(u[0, i])
 
         anim = animation.FuncAnimation(fig, animate, frames=n_frames-1, interval=100, repeat=True)
         if f_out is not None:
             anim.save(f_out)
         plt.show()
 
-
 if __name__ == '__main__':
     tau_s = 1e1
-    tau_x = 5e2 * 4
+    tau_x = 1e2
     tau_A = 1e4
     sigma = 1
     frac = 1
+    n_batch = 3
 
     print(tau_s, tau_x, tau_A)
-    T_RANGE = 1e5*frac
+    T_RANGE = 1e4*frac
     T_STEPS = int(T_RANGE)
 
     N_DIM = 2
@@ -190,13 +215,14 @@ if __name__ == '__main__':
     X = np.hstack((cos[:,None], sin[:,None]))
     X *= 10
 
-    mt_sc = MixT_SC(N_DIM, N_SPARSE, tau_s, tau_x, tau_A, l0, l1, sigma)
-    mt_sc.solve_discrete(X, tspan)
-    
-    assert False
+    for _ in range(3):
+        X = np.vstack((X, X))
+
+    X += np.random.normal(0, 1e0, size=X.shape)
+
+
+    mt_sc = MixT_SC(N_DIM, N_SPARSE, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch, positive=True)
+
     t0 = time()
     solns = mt_sc.solve(X, tspan)
-
-    print(time() - t0)
-    mt_sc.save_evolution(solns, n_frames=1000)
-
+    mt_sc.save_evolution(solns, n_frames=100)

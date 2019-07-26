@@ -3,20 +3,25 @@ PROBLEMS:
 
 IDEAS:
 * Parallel sampling?
+    Should be fine, take s to {s1, s2, .., sN}, N being the batch size
 
 TODO:
 V Shuffled X by batch
 V Mercedes set
 V L0 norm
-- Start tspan at 0
+V Start tspan at 0
+V Implement parallel sampling
+    V make loader
+    V write solver
+    V update plotter
 - Make all variables learnable:
     - A
     - x
     - s
     - l1
     - l0
-- Make code faster
-- Discrete SC
+V Make code faster
+V Discrete SC
 - LCA
 
 QUESTIONS:

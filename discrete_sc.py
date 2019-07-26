@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pylab as plt
+from matplotlib import animation
 
 class DiscreteSC:
-    def __init__(self, n_dim, n_sparse, eta_A, eta_s, n_batch, l0, l1, sigma):
+    def __init__(self, n_dim, n_sparse, eta_A, eta_s, n_batch, l0, l1, sigma, positive=False):
         self.n_dim = n_dim
         self.n_sparse = n_sparse
         self.eta_A = eta_A
@@ -14,13 +15,16 @@ class DiscreteSC:
         self.sigma = sigma
 
         self.s0 = -np.log(1 - l0) / l1
+        self.positive = True
     def dEds(self, s, x, A):
         sign_s = np.sign(s)
         where_active = (np.abs(s) >= self.s0)
         u = (s - self.s0*(sign_s)) * where_active
         dE_recon = (A.T @ (A @ u - x) / self.sigma**2) * where_active
-        dE_sparse = self.l1 * sign_s
-        #dE_sparse = self.l1 * ( (s > 0) - 10*(s < 0) )
+        if self.positive:
+            dE_sparse = self.l1 * ( (s > 0) - 10*(s < 0) )
+        else:
+            dE_sparse = self.l1 * sign_s
         return dE_recon + dE_sparse
     def dEdA(self, s, x, A):
         u = (s - self.s0*(np.sign(s))) * (np.abs(s) > self.s0)
@@ -81,18 +85,69 @@ class DiscreteSC:
                 'x' : X_soln
                 }
         return solns
+    def show_evolution(self, soln, f_out=None):
+        fig, axes = plt.subplots(ncols=2, figsize=(14, 6))
+        ax = axes[0]
+
+        # Create scatter plots for r and x
+        rx, ry = [], []
+        xx, xy = [], []
+        scat_r = ax.scatter(rx, ry, s=5, c='b', label=rf'$A \mathbf {{s}}$ : Reconstruction, $\eta_s = {self.eta_s}$')
+        scat_x = ax.scatter(xx, xy, s=50, c='r', label=rf'$\mathbf {{x}}$ : Data, n_batch = {self.n_batch}')
+
+        # Create arrows for tracking A
+        A_arrow_0, = ax.plot([], [], c='g', label=rf'$A$ : Dictionary, $\eta_A = {self.eta_A}$')
+        A_arrows = [A_arrow_0]
+        for A in range(self.n_sparse - 1):
+            A_arrow, = ax.plot([], [], c='g')
+            A_arrows.append(A_arrow)
+
+        ax.set_xlim(-15, 15)
+        ax.set_ylim(-15, 15)
+        ax.set_aspect(1)
+        fig.legend(loc='lower right')
+
+        # Create bar plot for sparse elements
+        if False:
+            s_n = np.arange(len(soln['s'][0]))
+            s_h = soln['s'][0]
+            s_bar = axes[1].bar(s_n, s_h, fc='k')
+            axes[1].set_ylim(-10, 10)
+            axes[1].set_xticks(np.arange(self.n_sparse))
+
+        def animate(k):
+            A = soln['A'][k]
+            S = soln['s'][k]
+            x = soln['x'][k]
+
+            scat_r.set_offsets(S @ A.T)
+            scat_r.cmap = plt.cm.get_cmap('Blues')
+
+            scat_x.set_offsets(x)
+
+            fig.suptitle(rf'Iteration {k}')
+            for k in range(self.n_sparse):
+                a = A[:, k] * 2
+                A_arrows[k].set_xdata([0, a[0]])
+                A_arrows[k].set_ydata([0, a[1]])
+
+
+        anim = animation.FuncAnimation(fig, animate, frames=len(soln['A']), interval=100, repeat=True)
+        if f_out is not None:
+            anim.save(f_out)
+        plt.show()
 
 if __name__ == '__main__':
     n_dim = 2
-    n_sparse = 2
-    n_batch = 2
+    n_sparse = 3
+    n_batch = 3
     eta_A = 1e-1
     eta_s = 1e-1
     l0 = .0
     l1 = .5
     sigma = 1
 
-    dsc = DiscreteSC(n_dim, n_sparse, eta_A, eta_s, n_batch, l0, l1, sigma)
+    dsc = DiscreteSC(n_dim, n_sparse, eta_A, eta_s, n_batch, l0, l1, sigma, positive=True)
 
     theta = (np.linspace(0, 2*np.pi, n_sparse, endpoint=False))
     cos = np.cos(theta)
@@ -101,5 +156,6 @@ if __name__ == '__main__':
     X *= 10
     #X = np.zeros((1, 2))
 
-    solns = dsc.solve(X, n_iter=10)
-    print(solns['s'])
+    solns = dsc.solve(X, n_iter=100, max_iter_s=int(1e3))
+
+    dsc.show_evolution(solns)
