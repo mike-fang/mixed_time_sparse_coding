@@ -6,6 +6,7 @@ IDEAS:
     Should be fine, take s to {s1, s2, .., sN}, N being the batch size
 
 TODO:
+- Make loader module
 V Shuffled X by batch
 V Mercedes set
 V L0 norm
@@ -14,10 +15,11 @@ V Implement parallel sampling
     V make loader
     V write solver
     V update plotter
+
 - Make all variables learnable:
-    - A
+    v A
     - x
-    - s
+    v s
     - l1
     - l0
 V Make code faster
@@ -28,3 +30,7 @@ QUESTIONS:
 
 1. Why is A.T @ A sparse?
 2. What are conditions of convergence for Langevin equations
+3. What is the non-eq distribution for T < infty? Could we use that?
+    - For uniform potential, the distribution of final position should be guassian with variance = t.
+        -Probably no good for T << T_eq, the trajectory is highly correlated (maybe?)
+

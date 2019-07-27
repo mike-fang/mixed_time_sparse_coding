@@ -1,5 +1,20 @@
-import numpy as np
+import matplotlib.pylab as plt
 
-X = np.arange(3)
+n_row = 5
+n_col = 10
+fig, axes = plt.subplots(n_row, n_col, figsize=(10, 5))
 
-print(X[2:4])
+idx = 0
+img_plot = []
+for ax_row in axes:
+    for ax in ax_row:
+        img_plot.append(
+                ax.imshow([[0]])
+                )
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+img_plot[2].set_data([[1, 0], [0, 1]])
+img_plot[2].autoscale()
+plt.show()
+

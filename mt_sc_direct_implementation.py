@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pylab as plt
 from matplotlib import animation
 from time import time
+from loaders import Loader
 
 class MixT_SC:
     def __init__(self, n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch=3, positive=False):
@@ -65,7 +66,7 @@ class MixT_SC:
                 k = len(rand_idx[n:n_data])
                 rand_idx[n:n+n_data] = np.random.permutation(n_data)[:k]
         return X[rand_idx[idx]]
-    def solve(self, X, tspan):
+    def solve(self, loader, tspan):
         # Start tspan at 0
         tspan -= tspan.min()
 
@@ -76,14 +77,13 @@ class MixT_SC:
         # Find where to load next X batch
         x_idx = (tspan // self.tau_x).astype(int)
         new_batch = (x_idx[1:] - x_idx[:-1]).astype(bool)
-        self.init_loader(X)
 
         # Precalculating Wiener process
         dW_s = np.random.normal(loc=0, scale= (2 * dT[:, None, None])**0.5, size=(t_steps - 1, self.n_batch, self.n_sparse)) 
 
         # Init params and solns
         S, A = self.init_sA()
-        X = self.get_batch()
+        X = loader.get_batch()
         s_soln = np.zeros((t_steps, self.n_batch, self.n_sparse))
         x_soln = np.zeros((t_steps, self.n_batch, self.n_dim))
         A_soln = np.zeros((t_steps, self.n_dim, self.n_sparse))
@@ -95,7 +95,7 @@ class MixT_SC:
         for i, t in enumerate(tspan[1:]):
             # Get new batch 
             if new_batch[i]:
-                X = self.get_batch()
+                X = loader.get_batch()
             dt = dT[i]
 
             #Iterate over batch
@@ -215,14 +215,10 @@ if __name__ == '__main__':
     X = np.hstack((cos[:,None], sin[:,None]))
     X *= 10
 
-    for _ in range(3):
-        X = np.vstack((X, X))
-
-    X += np.random.normal(0, 1e0, size=X.shape)
-
+    loader = Loader(X, n_batch)
 
     mt_sc = MixT_SC(N_DIM, N_SPARSE, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch, positive=True)
 
     t0 = time()
-    solns = mt_sc.solve(X, tspan)
+    solns = mt_sc.solve(loader, tspan)
     mt_sc.save_evolution(solns, n_frames=100)
