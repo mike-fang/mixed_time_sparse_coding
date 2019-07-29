@@ -5,6 +5,7 @@ dependencies:
     - tqdm
     - pytorch::pytorch
     - matplotlib
+    - h5py
     - pip
     - pip:
         -sdeint

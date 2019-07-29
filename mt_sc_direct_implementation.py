@@ -3,6 +3,21 @@ import matplotlib.pylab as plt
 from matplotlib import animation
 from time import time
 from loaders import Loader
+import h5py
+import os.path
+from time import time
+
+FILE_DIR = os.path.abspath(os.path.dirname(__file__))
+def save_soln(soln, f_name=None):
+    if f_name is None:
+        # Output to temp file if none specified
+        time_stamp = f'{time():.0f}'
+        f_name = os.path.join(FILE_DIR, 'results', 'tmp', time_stamp)
+
+    db = h5py.File(f_name)
+    for key, val in soln.items():
+        db.create_dataset(key, data=val)
+    return db
 
 class MixT_SC:
     def __init__(self, n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch=3, positive=False):
@@ -66,7 +81,7 @@ class MixT_SC:
                 k = len(rand_idx[n:n_data])
                 rand_idx[n:n+n_data] = np.random.permutation(n_data)[:k]
         return X[rand_idx[idx]]
-    def solve(self, loader, tspan):
+    def solve(self, loader, tspan, init_sA=None):
         # Start tspan at 0
         tspan -= tspan.min()
 
@@ -82,7 +97,10 @@ class MixT_SC:
         dW_s = np.random.normal(loc=0, scale= (2 * dT[:, None, None])**0.5, size=(t_steps - 1, self.n_batch, self.n_sparse)) 
 
         # Init params and solns
-        S, A = self.init_sA()
+        if init_sA is None:
+            S, A = self.init_sA()
+        else:
+            S, A = init_sA()
         X = loader.get_batch()
         s_soln = np.zeros((t_steps, self.n_batch, self.n_sparse))
         x_soln = np.zeros((t_steps, self.n_batch, self.n_dim))
@@ -116,11 +134,11 @@ class MixT_SC:
             x_soln[i+1] = X
         solns = {}
         solns['X'] = x_soln
-        solns['s'] = s_soln
+        solns['S'] = s_soln
         solns['A'] = A_soln
         solns['T'] = tspan
         return solns
-    def save_evolution(self, soln, n_frames=100, overlap=3, f_out=None):
+    def show_evolution(self, soln, n_frames=100, overlap=3, f_out=None):
         fig, axes = plt.subplots(ncols=2, figsize=(14, 6))
         ax = axes[0]
 
@@ -144,20 +162,20 @@ class MixT_SC:
 
         if False:
             # Create bar plot for sparse elements
-            s_n = np.arange(len(soln['s'][0]))
-            s_h = soln['s'][0]
+            s_n = np.arange(len(soln['S'][0]))
+            s_h = soln['S'][0]
             s_bar = axes[1].bar(s_n, s_h, fc='k')
             axes[1].set_ylim(-10, 10)
             axes[1].set_xticks(np.arange(self.n_sparse))
 
 
-        idx_stride = int(len(soln['s']) // n_frames)
+        idx_stride = int(len(soln['S'][:]) // n_frames)
         def animate(nf):
             idx0 = max(0, (nf - overlap + 1) * idx_stride)
             idx1 = (nf + 1) * idx_stride 
 
             T = soln['T'][idx0:idx1]
-            y = soln['s'][idx0:idx1].reshape((-1, self.n_sparse))
+            y = soln['S'][idx0:idx1].reshape((-1, self.n_sparse))
             #y = y - np.sign(y)
 
             ti = T[0]
@@ -194,7 +212,7 @@ if __name__ == '__main__':
     tau_x = 1e2
     tau_A = 1e4
     sigma = 1
-    frac = 1
+    frac = .1
     n_batch = 3
 
     print(tau_s, tau_x, tau_A)
@@ -221,4 +239,5 @@ if __name__ == '__main__':
 
     t0 = time()
     solns = mt_sc.solve(loader, tspan)
-    mt_sc.save_evolution(solns, n_frames=100)
+    solns_db = save_soln(solns)
+    mt_sc.show_evolution(solns_db, n_frames=100)

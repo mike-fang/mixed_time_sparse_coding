@@ -6,7 +6,8 @@ IDEAS:
     Should be fine, take s to {s1, s2, .., sN}, N being the batch size
 
 TODO:
-- Make loader module
+- Make loader construct batches from bases
+V Make loader module
 V Shuffled X by batch
 V Mercedes set
 V L0 norm

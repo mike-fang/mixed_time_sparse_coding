@@ -1,4 +1,4 @@
-from mt_sc_direct_implementation import MixT_SC
+from mt_sc_direct_implementation import MixT_SC, save_soln
 from loaders import HVLinesLoader
 import matplotlib.pylab as plt
 import numpy as np
@@ -10,7 +10,7 @@ n_batch = 10
 
 tau_s = 1e1
 tau_x = 1e2
-tau_A = 1e4
+tau_A = 1e3
 T_RANGE = 1e4
 T_STEPS = int(T_RANGE)
 tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
@@ -25,7 +25,17 @@ sigma = 1
 loader = HVLinesLoader(H, W, n_batch, p=p)
 
 mtsc = MixT_SC(n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch, positive=False)
-solns = mtsc.solve(loader, tspan)
+
+print(loader.bases.shape)
+def sA_HV_bases():
+    s = np.zeros((n_batch, n_sparse))
+    A = np.zeros((n_dim, n_sparse))
+    A[:, :H + W] = loader.bases.T
+    return s, A
+
+s, A = sA_HV_bases()
+solns = mtsc.solve(loader, tspan, init_sA=sA_HV_bases)
+save_soln(solns, './results/hv_line_HV_init.h5py')
 
 
 n_row = 5

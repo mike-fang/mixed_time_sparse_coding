@@ -38,6 +38,8 @@ class HVLinesLoader:
         self.W = W
         self.n_batch = n_batch
         self.p = p
+
+        self.set_bases()
     def get_batch(self, flatten=True):
         batch = np.zeros((self.n_batch, self.W, self.H))
         for img in batch:
@@ -49,14 +51,40 @@ class HVLinesLoader:
             return batch.reshape((self.n_batch, -1))
         else:
             return batch
+    def get_batch(self, reshape=False):
+        S = np.random.binomial(1, self.p, size=(self.n_batch, self.W + self.H)).astype(float)
+        S *= np.random.random(S.shape)
+        batch = S @ self.bases
+
+        if reshape:
+            return batch.reshape((self.n_batch, self.H, self.W))
+        else:
+            return batch
+    def set_bases(self, flatten=True):
+        bases = np.zeros((self.H + self.W, self.H, self.H))
+        for i in range(self.H):
+            bases[i, i] = 1
+        for i in range(self.W):
+            bases[self.H + i, :, i] = 1
+        if flatten:
+            self.bases = bases.reshape((self.H + self.W, -1))
+        else:
+            self.bases = bases
+        return self.bases
+
+
 
         
 
 
 
 if __name__ == '__main__':
+
     H = W = 10
     p = .1
     loader = HVLinesLoader(H, W, 100, p)
+    plt.imshow(loader.get_batch(reshape=True)[0])
+    plt.show()
+    assert False
     plt.imshow(loader.get_batch())
     plt.show()
