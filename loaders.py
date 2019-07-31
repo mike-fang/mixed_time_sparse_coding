@@ -1,6 +1,11 @@
 import numpy as np
 import matplotlib.pylab as plt
+import pickle
+from glob import glob
+import os.path
+from time import time
 
+FILE_DIR = os.path.abspath(os.path.dirname(__file__))
 class Loader:
     """
     Loader for predetermined data (X), optionally, iid normal noise can be added to data with stdev sigma.
@@ -72,9 +77,58 @@ class HVLinesLoader:
             self.bases = bases
         return self.bases
 
+class Solutions:
+    @classmethod
+    def load(cls, f_name=None):
+        if f_name is None:
+            # Pick the newest tmp file if none given
+            tmp_files = glob(os.path.join(FILE_DIR, 'results', 'tmp', '*'))
+            tmp_files.sort()
+            f_name = tmp_files[-1]
+        with open(f_name, 'rb') as f:
+            return pickle.load(f)
+    def __init__(self, solns, im_shape=None):
+        self.parse_dict(solns)
+        if im_shape is None:
+            self.H = self.W = None
+        else:
+            self.H, self.W = im_shape
+        if im_shape is not None:
+            self.reshape_solns()
+    def parse_dict(self, solns):
+        self.A = solns['A']
+        self.S = solns['S']
+        self.X = solns['X']
+        if 'T' in solns:
+            self.T = solns['T']
+        else:
+            self.T = None
+        if 'R' in solns:
+            self.R = solns['R']
+        else:
+            self.R = np.einsum('ijk,ilk->ijl', self.S, self.A)
 
+        self.n_frame, self.n_dim, self.n_sparse = self.A.shape
+        _, self.n_batch, _ = self.X.shape
+    def reshape_solns(self):
+        A = np.transpose(self.A, (0, 2, 1))
+        R = self.R
+        X = self.X
 
-        
+        self.A_reshaped = A.reshape((self.n_frame, self.n_sparse, self.H, self.W))
+        self.R_reshaped = R.reshape((self.n_frame, self.n_batch, self.H, self.W))
+        self.X_reshaped = X.reshape((self.n_frame, self.n_batch, self.H, self.W))
+        return db
+    def save(self, f_name=None, overwrite=False):
+        if f_name is None:
+            # Output to temp file if none specified
+            time_stamp = f'{time():.0f}'
+            f_name = os.path.join(FILE_DIR, 'results', 'tmp', time_stamp)
+        if os.path.isfile(f_name) and overwrite:
+            os.unlink(f_name)
+        with open(f_name, 'wb') as f:
+            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+
 
 
 

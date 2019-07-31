@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pylab as plt
 from matplotlib import animation
+from loaders import *
+from mixed_t_sc import save_soln
 
 class DiscreteSC:
     def __init__(self, n_dim, n_sparse, eta_A, eta_s, n_batch, l0, l1, sigma, positive=False):
@@ -50,7 +52,7 @@ class DiscreteSC:
         s = np.zeros(self.n_sparse)
         #s = np.array((1, 0.))
         return s
-    def solve(self, X, n_iter, max_iter_s=100, eps=1e-5):
+    def train(self, X, n_iter, max_iter_s=100, eps=1e-5):
         A = self.init_A()
 
         A_soln = np.zeros((n_iter, self.n_dim, self.n_sparse))
@@ -79,10 +81,16 @@ class DiscreteSC:
             # Normalize A
             A /= np.linalg.norm(A, axis=0)
             A_soln[n] = A
+
+        # Get visible sparse activation
+        sign_s = np.sign(s_soln)
+        where_active = (np.abs(s_soln) >= self.s0)
+        u_soln = (s_soln - self.s0*(sign_s)) * where_active
+
         solns = {
                 'A' : A_soln,
-                's' : s_soln,
-                'x' : X_soln
+                'S' : u_soln,
+                'X' : X_soln
                 }
         return solns
     def show_evolution(self, soln, f_out=None):
@@ -109,16 +117,16 @@ class DiscreteSC:
 
         # Create bar plot for sparse elements
         if False:
-            s_n = np.arange(len(soln['s'][0]))
-            s_h = soln['s'][0]
+            s_n = np.arange(len(soln['S'][0]))
+            s_h = soln['S'][0]
             s_bar = axes[1].bar(s_n, s_h, fc='k')
             axes[1].set_ylim(-10, 10)
             axes[1].set_xticks(np.arange(self.n_sparse))
 
         def animate(k):
             A = soln['A'][k]
-            S = soln['s'][k]
-            x = soln['x'][k]
+            S = soln['S'][k]
+            x = soln['X'][k]
 
             scat_r.set_offsets(S @ A.T)
             scat_r.cmap = plt.cm.get_cmap('Blues')
@@ -156,6 +164,6 @@ if __name__ == '__main__':
     X *= 10
     #X = np.zeros((1, 2))
 
-    solns = dsc.solve(X, n_iter=100, max_iter_s=int(1e3))
+    solns = dsc.train(X, n_iter=100, max_iter_s=int(1e2))
 
-    dsc.show_evolution(solns)
+

@@ -1,4 +1,6 @@
 import numpy as np
+from glob import glob
 
-X = np.random.randn(5, 4, 3)
-print(np.transpose(X, None).shape)
+tmp_files = glob('./results/tmp/*')
+tmp_files.sort()
+print(tmp_files[-1])
