@@ -6,7 +6,13 @@ IDEAS:
     Should be fine, take s to {s1, s2, .., sN}, N being the batch size
 
 TODO:
-- Make loader construct batches from bases
+- Figure out time scale and correspondance w/ step size
+- Plot decrease in loss or something
+- Visualize X, R, A, S in same screen
+V debug HVLines
+    - Make visualizer work
+V Save reconstr and image shape during save_soln function call
+V Make loader construct batches from bases
 V Make loader module
 V Shuffled X by batch
 V Mercedes set

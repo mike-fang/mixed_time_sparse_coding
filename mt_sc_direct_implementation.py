@@ -8,15 +8,46 @@ import os.path
 from time import time
 
 FILE_DIR = os.path.abspath(os.path.dirname(__file__))
-def save_soln(soln, f_name=None):
+def save_soln(solns, im_shape=None, f_name=None, overwrite=False):
     if f_name is None:
         # Output to temp file if none specified
         time_stamp = f'{time():.0f}'
         f_name = os.path.join(FILE_DIR, 'results', 'tmp', time_stamp)
+    if os.path.isfile(f_name) and overwrite:
+        os.unlink(f_name)
+
+    A = solns['A'][:]
+    S = solns['S'][:]
+    X = solns['X'][:]
+    R = np.einsum('ijk,ilk->ijl', S, A)
+    n_f, n_d, n_s = A.shape
+    _, n_b, _ = X.shape
 
     db = h5py.File(f_name)
-    for key, val in soln.items():
-        db.create_dataset(key, data=val)
+    db_A = db.create_dataset('A', data=A)
+    db_S = db.create_dataset('S', data=S)
+    db_X = db.create_dataset('X', data=X)
+    db_R = db.create_dataset('R', data=R)
+    db.create_dataset('T', data=solns['T'])
+
+    db_A.attrs['transpose'] = (0, 2, 1)
+    if im_shape is not None:
+        db_A.attrs['reshape'] = (n_f, n_s, *im_shape)
+    else:
+        db_A.attrs['reshape'] = 'None'
+
+    db_R.attrs['transpose'] = 'None'
+    if im_shape is not None:
+        db_R.attrs['reshape'] = (n_f, n_b, *im_shape)
+    else:
+        db_R.attrs['reshape'] = 'None'
+
+    db_X.attrs['transpose'] = 'None'
+    if im_shape is not None:
+        db_X.attrs['reshape'] = (n_f, n_b, *im_shape)
+    else:
+        db_X.attrs['reshape'] = 'None'
+
     return db
 
 class MixT_SC:
@@ -81,7 +112,9 @@ class MixT_SC:
                 k = len(rand_idx[n:n_data])
                 rand_idx[n:n+n_data] = np.random.permutation(n_data)[:k]
         return X[rand_idx[idx]]
-    def solve(self, loader, tspan, init_sA=None):
+    def solve(self, loader, tspan, init_sA=None, no_noise=False):
+        t0 = time()
+        print('Training ...')
         # Start tspan at 0
         tspan -= tspan.min()
 
@@ -95,6 +128,8 @@ class MixT_SC:
 
         # Precalculating Wiener process
         dW_s = np.random.normal(loc=0, scale= (2 * dT[:, None, None])**0.5, size=(t_steps - 1, self.n_batch, self.n_sparse)) 
+        if no_noise:
+            dW_s *= 0
 
         # Init params and solns
         if init_sA is None:
@@ -132,11 +167,20 @@ class MixT_SC:
             s_soln[i+1] = S
             A_soln[i+1] = A
             x_soln[i+1] = X
+
+        sign_s = np.sign(s_soln)
+        where_active = (np.abs(s_soln) >= self.s0)
+        u_soln = (s_soln - self.s0*(sign_s)) * where_active
+
         solns = {}
         solns['X'] = x_soln
-        solns['S'] = s_soln
+        #solns['S'] = s_soln
         solns['A'] = A_soln
         solns['T'] = tspan
+        solns['S'] = u_soln
+
+        print(f'Training completed in {time() - t0:.2f} seconds')
+
         return solns
     def show_evolution(self, soln, n_frames=100, overlap=3, f_out=None):
         fig, axes = plt.subplots(ncols=2, figsize=(14, 6))
@@ -183,7 +227,8 @@ class MixT_SC:
 
             A = soln['A'][idx1]
         
-            u = (y - self.s0*(np.sign(y))) * (np.abs(y) > self.s0)
+            #u = (y - self.s0*(np.sign(y))) * (np.abs(y) > self.s0)
+            u = y
             scat_s.set_offsets(u @ A.T)
             scat_s.set_array(np.linspace(0, 1, len(T)))
             scat_s.cmap = plt.cm.get_cmap('Blues')
@@ -208,21 +253,21 @@ class MixT_SC:
         plt.show()
 
 if __name__ == '__main__':
-    tau_s = 1e1
-    tau_x = 1e2
-    tau_A = 1e4
-    sigma = 1
-    frac = .1
+    tau_s = 1e2
+    tau_x = 1e4
+    tau_A = 1e6
+    sigma = .5
+    frac = 1
     n_batch = 3
 
     print(tau_s, tau_x, tau_A)
-    T_RANGE = 1e4*frac
+    T_RANGE = 1e5*frac
     T_STEPS = int(T_RANGE)
 
     N_DIM = 2
     N_SPARSE = 3
 
-    l1 = .5
+    l1 = .3
     l0 = .5
     tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 
