@@ -3,6 +3,8 @@ import matplotlib.pylab as plt
 from matplotlib import animation
 from loaders import *
 from mixed_t_sc import save_soln
+from tqdm import tqdm
+from visualization import show_evol
 
 class DiscreteSC:
     def __init__(self, n_dim, n_sparse, eta_A, eta_s, n_batch, l0, l1, sigma, positive=False):
@@ -52,7 +54,7 @@ class DiscreteSC:
         s = np.zeros(self.n_sparse)
         #s = np.array((1, 0.))
         return s
-    def train(self, X, n_iter, max_iter_s=100, eps=1e-5):
+    def train(self, loader, n_iter, max_iter_s=100, eps=1e-5):
         A = self.init_A()
 
         A_soln = np.zeros((n_iter, self.n_dim, self.n_sparse))
@@ -60,10 +62,10 @@ class DiscreteSC:
         X_soln = np.zeros((n_iter, self.n_batch, self.n_dim))
 
         # Init batch counter
-        self.init_loader(X)
+        loader.reset()
         # A update loop
-        for n in range(n_iter):
-            X_batch = self.get_batch()
+        for n in tqdm(range(n_iter)):
+            X_batch = loader.get_batch()
             X_soln[n] = X_batch
 
             s = self.init_s()
@@ -164,6 +166,8 @@ if __name__ == '__main__':
     X *= 10
     #X = np.zeros((1, 2))
 
-    solns = dsc.train(X, n_iter=100, max_iter_s=int(1e2))
+    loader = Loader(X, n_batch)
+    solns_dict = dsc.train(loader, n_iter=100, max_iter_s=int(1e2))
 
+    dsc.show_evolution(solns_dict)
 

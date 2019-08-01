@@ -2,6 +2,7 @@ import matplotlib.pylab as plt
 import numpy as np
 from matplotlib import animation
 import h5py
+from loaders import Solutions
 
 def get_grid_axes(n_axes, ratio=1.5):
     # Get n_rows / n_cols
@@ -65,23 +66,18 @@ def show_evol(params, n_frames, n_comps=None, ratio=1.5):
     anim = animation.FuncAnimation(fig, animate, frames=n_frames, interval=100, repeat=True)
     plt.show()
 
-#solns = h5py.File('./results/hv_line_HV_init.h5py', 'r')
-solns = h5py.File('./results/hv_line_HV.h5py', 'r')
-H, W = 5, 5
+if __name__ == '__main__':
+    print('hi')
+    #solns = h5py.File('./results/hv_line_HV_init.h5py', 'r')
+    #solns = h5py.File('./results/hv_line_HV.h5py', 'r')
+    solns = Solutions.load('./results/hv_line_mtsc.soln')
+    #solns = Solutions.load('./results/hv_line_dsc.soln')
+    H, W = 5, 5
 
-def get_reshaped_param(name):
-    param = solns[name][:]
-    transpose = solns[name].attrs['transpose']
-    reshape = solns[name].attrs['reshape']
-    if isinstance(transpose, np.ndarray):
-        param = np.transpose(param, transpose)
-    if isinstance(reshape, np.ndarray):
-        param = param.reshape(reshape)
-    return param
 
-A = get_reshaped_param('A')
-X = get_reshaped_param('X')
-R = get_reshaped_param('R')
+    A = solns.A_reshaped
+    X = solns.X_reshaped
+    R = solns.R_reshaped
 
-XRA = np.concatenate((X, R, A), axis=1)
-show_evol(XRA, n_frames=100, ratio=(10/3))
+    XRA = np.concatenate((X, R, A), axis=1)
+    show_evol(XRA, n_frames=100, ratio=(10/3))

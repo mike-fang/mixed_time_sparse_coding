@@ -45,6 +45,8 @@ class HVLinesLoader:
         self.p = p
 
         self.set_bases()
+    def reset(self):
+        pass
     def get_batch(self, flatten=True):
         batch = np.zeros((self.n_batch, self.W, self.H))
         for img in batch:
@@ -85,6 +87,7 @@ class Solutions:
             tmp_files = glob(os.path.join(FILE_DIR, 'results', 'tmp', '*'))
             tmp_files.sort()
             f_name = tmp_files[-1]
+        print(f'Loading solutions from {f_name}')
         with open(f_name, 'rb') as f:
             return pickle.load(f)
     def __init__(self, solns, im_shape=None):
@@ -118,19 +121,16 @@ class Solutions:
         self.A_reshaped = A.reshape((self.n_frame, self.n_sparse, self.H, self.W))
         self.R_reshaped = R.reshape((self.n_frame, self.n_batch, self.H, self.W))
         self.X_reshaped = X.reshape((self.n_frame, self.n_batch, self.H, self.W))
-        return db
     def save(self, f_name=None, overwrite=False):
-        if f_name is None:
+        if f_name in [None, 'temp']:
             # Output to temp file if none specified
             time_stamp = f'{time():.0f}'
             f_name = os.path.join(FILE_DIR, 'results', 'tmp', time_stamp)
         if os.path.isfile(f_name) and overwrite:
             os.unlink(f_name)
+        print(f'Saving solutions to {f_name}')
         with open(f_name, 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
-
-
-
 
 if __name__ == '__main__':
 

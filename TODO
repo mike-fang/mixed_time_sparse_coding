@@ -9,7 +9,7 @@ TODO:
 V Make solutions class
 - Figure out time scale and correspondance w/ step size
 - Plot decrease in loss or something
-- Visualize X, R, A, S in same screen
+V Visualize X, R, A, S in same screen
 V debug HVLines
     - Make visualizer work
 V Save reconstr and image shape during save_soln function call
@@ -41,4 +41,4 @@ QUESTIONS:
 3. What is the non-eq distribution for T < infty? Could we use that?
     - For uniform potential, the distribution of final position should be guassian with variance = t.
         -Probably no good for T << T_eq, the trajectory is highly correlated (maybe?)
-
+4. What is the correspondance, if there is any, between MTSC and DSC in terms of time scale and step size, etc.
