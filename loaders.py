@@ -4,6 +4,7 @@ import pickle
 from glob import glob
 import os.path
 from time import time
+import h5py
 
 FILE_DIR = os.path.abspath(os.path.dirname(__file__))
 class Loader:
@@ -131,6 +132,76 @@ class Solutions:
         print(f'Saving solutions to {f_name}')
         with open(f_name, 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+
+class Solutions_H5:
+    @classmethod
+    def load_h5(cls, f_name=None):
+        if f_name is None:
+            # Pick the newest tmp file if none given
+            tmp_files = glob(os.path.join(FILE_DIR, 'results', 'tmp', '*'))
+            tmp_files.sort()
+            f_name = tmp_files[-1]
+        print(f'Loading solutions from {f_name}')
+        return cls(f_name)
+        #self.h5_file = h5py.File(f_name, 'r')
+    def __init__(self, f_name=None, solns=None, im_shape=None, overwrite=False):
+        self.init_h5_file(f_name, overwrite)
+        if solns is not None:
+            self.save_soln(solns, im_shape)
+        self.get_shape()
+    def init_h5_file(self, f_name, overwrite):
+        if f_name in [None, 'temp']:
+            # Output to temp file if none specified
+            time_stamp = f'{time():.0f}'
+            f_name = os.path.join(FILE_DIR, 'results', 'tmp', time_stamp)
+        self.f_name = f_name
+        if os.path.isfile(f_name) and overwrite:
+            os.unlink(f_name)
+        self.h5_file = h5py.File(f_name, 'a')
+    def save_soln(self, solns, im_shape):
+        #self.solns = solns
+        self.h5_file['im_shape'] = im_shape or 'None'
+        for key, val in solns.items():
+            self.h5_file.create_dataset(key, data=val)
+        if not 'R' in self.h5_file:
+            S = solns['S']
+            A = solns['A']
+            R = np.einsum('ijk,ilk->ijl', S, A)
+            self.h5_file.create_dataset('R', data=R)
+    def get_shape(self):
+        self.n_frame, self.n_dim, self.n_sparse = self.h5_file['A'].shape
+        _, self.n_batch, _ = self.h5_file['X'].shape
+    def get_reshaped_params(self, indices=None):
+        im_shape = self.h5_file['im_shape']
+        if im_shape is 'None':
+            print('No im_shape provided')
+            return None
+        else:
+            H, W = im_shape
+
+        if indices is None:
+            A = np.transpose(self.h5_file['A'][:], (0, 2, 1))
+            R  = self.h5_file['R'][:]
+            X  = self.h5_file['X'][:]
+        else:
+            # Only retrieve needed params
+            A = np.transpose(self.h5_file['A'][indices], (0, 2, 1))
+            R  = self.h5_file['R'][indices]
+            X  = self.h5_file['X'][indices]
+
+        reshaped_params = {}
+        reshaped_params['A'] = A.reshape((-1, self.n_sparse, H, W))
+        reshaped_params['R'] = R.reshape((-1, self.n_batch, H, W))
+        reshaped_params['X'] = X.reshape((-1, self.n_batch, H, W))
+        return reshaped_params
+    def __getitem__(self, key):
+        return self.h5_file[key][:]
+    def __getattr__(self, key):
+        return self.h5_file[key][:]
+
+
+
+
 
 if __name__ == '__main__':
 

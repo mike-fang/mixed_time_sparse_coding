@@ -51,7 +51,7 @@ def save_soln(solns, im_shape=None, f_name=None, overwrite=False):
 
     return db
 
-class MixT_SC:
+class MixedTimeSC:
     def __init__(self, n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch=3, positive=False):
         self.n_dim = n_dim
         self.n_sparse = n_sparse
@@ -281,7 +281,7 @@ if __name__ == '__main__':
 
     loader = Loader(X, n_batch)
 
-    mt_sc = MixT_SC(N_DIM, N_SPARSE, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch, positive=True)
+    mt_sc = MixedTimeSC(N_DIM, N_SPARSE, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch, positive=True)
 
     t0 = time()
     solns_dict = mt_sc.train(loader, tspan)

@@ -6,6 +6,7 @@ IDEAS:
     Should be fine, take s to {s1, s2, .., sN}, N being the batch size
 
 TODO:
+- Specify which times to save
 V Make solutions class
 - Figure out time scale and correspondance w/ step size
 - Plot decrease in loss or something

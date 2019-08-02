@@ -1,10 +1,10 @@
-from mixed_t_sc import MixT_SC, save_soln
+from mixed_t_sc import MixedTimeSC, save_soln
 from discrete_sc import DiscreteSC
 from loaders import *
 import matplotlib.pylab as plt
 import numpy as np
 from matplotlib import animation
-from visualization import show_evol
+from visualization import show_img_evo
 
 # Data params
 H = W = 5
@@ -29,7 +29,7 @@ sigma = .2
 tau_s = 1e2
 tau_x = 5e3
 tau_A = 1e5
-T_RANGE = 1e6
+T_RANGE = 1e3
 T_STEPS = int(T_RANGE)
 tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 
@@ -38,12 +38,11 @@ eta_A = 1e-2
 eta_s = 1e-3
 
 def train_mtsc(f_name=None):
-    mtsc = MixT_SC(n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch, positive=True)
+    mtsc = MixedTimeSC(n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch, positive=True)
     soln_dict = mtsc.train(loader, tspan, init_sA=None, no_noise=False)
-    soln = Solutions(soln_dict, im_shape=(H, W))
-    if f_name:
-        soln.save(f_name=f_name, overwrite=True)
+    soln = Solutions_H5(f_name, soln_dict, im_shape=(H, W), overwrite=True)
     return soln
+
 
 def train_dsc():
     l0 = 0.0
@@ -53,12 +52,11 @@ def train_dsc():
     soln.save(f_name='./results/hv_line_dsc.soln')
 
 soln = train_mtsc('./results/hv_mtsc.soln')
-
-soln = Solutions.load('./results/hv_mtsc.soln')
-A = soln.A_reshaped
-X = soln.X_reshaped
-R = soln.R_reshaped
+reshaped_params = soln.get_reshaped_params()
+A = reshaped_params['A']
+R = reshaped_params['R']
+X = reshaped_params['X']
 
 XRA = np.concatenate((X, R, A), axis=1)
-show_evol(XRA, n_frames=100, ratio = 10/3)
+show_img_evo(XRA, n_frames=100, ratio = 10/3)
 

@@ -23,7 +23,7 @@ def get_grid_axes(n_axes, ratio=1.5):
             ax.set_xticks([])
             ax.set_yticks([])
 
-def show_evol(params, n_frames, n_comps=None, ratio=1.5):
+def show_img_evo(params, n_frames, n_comps=None, ratio=1.5):
     """
         params: The parameter to visualize, should be reshaped to be (n_frame_total, n_sparse_total, n_dim1, n_dim2).
         n_frames: Number of frames to be shown in animation, must be smaller than n_frame_total.
@@ -80,4 +80,4 @@ if __name__ == '__main__':
     R = solns.R_reshaped
 
     XRA = np.concatenate((X, R, A), axis=1)
-    show_evol(XRA, n_frames=100, ratio=(10/3))
+    show_img_evo(XRA, n_frames=100, ratio=(10/3))

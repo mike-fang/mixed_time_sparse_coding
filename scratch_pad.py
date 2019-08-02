@@ -1,6 +1,8 @@
 import numpy as np
 from glob import glob
+import h5py
 
-tmp_files = glob('./results/tmp/*')
-tmp_files.sort()
-print(tmp_files[-1])
+idx = slice(0, 100, 5)
+print(idx.indices(4))
+print(np.arange(100)[idx])
+print(len(list(idx)))

@@ -4,7 +4,7 @@ from matplotlib import animation
 from loaders import *
 from mixed_t_sc import save_soln
 from tqdm import tqdm
-from visualization import show_evol
+from visualization import show_img_evo
 
 class DiscreteSC:
     def __init__(self, n_dim, n_sparse, eta_A, eta_s, n_batch, l0, l1, sigma, positive=False):
