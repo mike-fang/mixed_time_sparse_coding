@@ -28,8 +28,8 @@ sigma = .2
 # MTSC Params
 tau_s = 1e2
 tau_x = 5e3
-tau_A = 1e5
-T_RANGE = 5e6
+tau_A = 5e5
+T_RANGE = 1e7
 T_STEPS = int(T_RANGE)
 tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 
@@ -54,6 +54,7 @@ def train_dsc():
     soln.save(f_name='./results/hv_line_dsc.soln')
 
 soln = train_mtsc('./results/hv_mtsc.soln', n_frames=1000)
+assert False
 #soln = Solutions_H5.load_h5('./results/hv_mtsc.soln')
 reshaped_params = soln.get_reshaped_params()
 A = reshaped_params['A']
