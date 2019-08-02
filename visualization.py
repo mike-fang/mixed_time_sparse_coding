@@ -23,7 +23,7 @@ def get_grid_axes(n_axes, ratio=1.5):
             ax.set_xticks([])
             ax.set_yticks([])
 
-def show_img_evo(params, n_frames, n_comps=None, ratio=1.5):
+def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5):
     """
         params: The parameter to visualize, should be reshaped to be (n_frame_total, n_sparse_total, n_dim1, n_dim2).
         n_frames: Number of frames to be shown in animation, must be smaller than n_frame_total.
@@ -32,7 +32,11 @@ def show_img_evo(params, n_frames, n_comps=None, ratio=1.5):
     """
     print(params.shape)
     frames_total, n_comps_total, n_dim1, n_dim2 = params.shape
-    skip = frames_total // n_frames
+
+    if n_frames is None:
+        skip = 1
+    else:
+        skip = frames_total // n_frames
 
     # Use all components if not specified
     if n_comps is None:

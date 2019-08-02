@@ -113,11 +113,16 @@ class MixedTimeSC:
                 k = len(rand_idx[n:n_data])
                 rand_idx[n:n+n_data] = np.random.permutation(n_data)[:k]
         return X[rand_idx[idx]]
-    def train(self, loader, tspan, init_sA=None, no_noise=False):
+    def train(self, loader, tspan, out_t=None, init_sA=None, no_noise=False):
         t0 = time()
         print('Training ...')
         # Start tspan at 0
         tspan -= tspan.min()
+
+        # If not specified, output all time points
+        if out_t is None:
+            out_t = tspan
+        n_out = len(out_t)
 
         # Definite dt, t_steps
         t_steps = len(tspan)
@@ -138,14 +143,15 @@ class MixedTimeSC:
         else:
             S, A = init_sA()
         X = loader.get_batch()
-        s_soln = np.zeros((t_steps, self.n_batch, self.n_sparse))
-        x_soln = np.zeros((t_steps, self.n_batch, self.n_dim))
-        A_soln = np.zeros((t_steps, self.n_dim, self.n_sparse))
+        s_soln = np.zeros((n_out, self.n_batch, self.n_sparse))
+        x_soln = np.zeros((n_out, self.n_batch, self.n_dim))
+        A_soln = np.zeros((n_out, self.n_dim, self.n_sparse))
         s_soln[0] = S
         A_soln[0] = A
         x_soln[0] = X
 
         # Iterate over time steps
+        out_idx = 1
         for i, t in enumerate(tqdm(tspan[1:])):
             # Get new batch 
             if new_batch[i]:
@@ -165,9 +171,11 @@ class MixedTimeSC:
             A += dA / self.n_batch
 
             # Record values
-            s_soln[i+1] = S
-            A_soln[i+1] = A
-            x_soln[i+1] = X
+            if t in out_t:
+                s_soln[out_idx] = S
+                A_soln[out_idx] = A
+                x_soln[out_idx] = X
+                out_idx += 1
 
         sign_s = np.sign(s_soln)
         where_active = (np.abs(s_soln) >= self.s0)

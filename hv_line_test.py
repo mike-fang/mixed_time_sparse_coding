@@ -37,9 +37,11 @@ tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 eta_A = 1e-2
 eta_s = 1e-3
 
-def train_mtsc(f_name=None):
+def train_mtsc(f_name=None, n_frames=100):
+    skip = int(len(tspan)//n_frames)
+    out_t = tspan[::skip]
     mtsc = MixedTimeSC(n_dim, n_sparse, tau_s, tau_x, tau_A, l0, l1, sigma, n_batch, positive=True)
-    soln_dict = mtsc.train(loader, tspan, init_sA=None, no_noise=False)
+    soln_dict = mtsc.train(loader, tspan, out_t=out_t, init_sA=None, no_noise=False)
     soln = Solutions_H5(f_name, soln_dict, im_shape=(H, W), overwrite=True)
     return soln
 
@@ -51,12 +53,12 @@ def train_dsc():
     soln = Solutions(soln_dict, im_shape=(H, W))
     soln.save(f_name='./results/hv_line_dsc.soln')
 
-soln = train_mtsc('./results/hv_mtsc.soln')
+soln = train_mtsc('./results/hv_mtsc.soln', n_frames=100)
 reshaped_params = soln.get_reshaped_params()
 A = reshaped_params['A']
 R = reshaped_params['R']
 X = reshaped_params['X']
 
 XRA = np.concatenate((X, R, A), axis=1)
-show_img_evo(XRA, n_frames=100, ratio = 10/3)
+show_img_evo(XRA, ratio = 10/3)
 
