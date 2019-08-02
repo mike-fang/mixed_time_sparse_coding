@@ -30,11 +30,11 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5):
         n_comps: Number of sparse components to display msut be smaller than n_sparse_total.
         ratio: The aspect ratio to arrange axes for display.
     """
-    print(params.shape)
     frames_total, n_comps_total, n_dim1, n_dim2 = params.shape
 
     if n_frames is None:
         skip = 1
+        n_frames = frames_total
     else:
         skip = frames_total // n_frames
 
