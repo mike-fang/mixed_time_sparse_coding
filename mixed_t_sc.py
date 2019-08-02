@@ -185,7 +185,7 @@ class MixedTimeSC:
         solns['X'] = x_soln
         #solns['S'] = s_soln
         solns['A'] = A_soln
-        solns['T'] = t_out
+        solns['T'] = out_t
         solns['S'] = u_soln
 
         print(f'Training completed in {time() - t0:.2f} seconds')
