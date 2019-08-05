@@ -53,9 +53,8 @@ def train_dsc():
     soln = Solutions(soln_dict, im_shape=(H, W))
     soln.save(f_name='./results/hv_line_dsc.soln')
 
-soln = train_mtsc('./results/hv_mtsc.soln', n_frames=1000)
-assert False
-#soln = Solutions_H5.load_h5('./results/hv_mtsc.soln')
+#soln = train_mtsc('./results/hv_mtsc.soln', n_frames=1000)
+soln = Solutions_H5.load_h5('./hv_mtsc.soln')
 reshaped_params = soln.get_reshaped_params()
 A = reshaped_params['A']
 R = reshaped_params['R']
