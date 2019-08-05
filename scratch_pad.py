@@ -5,6 +5,12 @@ import h5py
 class DictTest:
     def __init__(self, **dict_):
         self.dict = dict_
+    def __repr__(self):
+        string = "Energy_L0\n"
+        for k, v in self.dict.items():
+            string += f'{k}: {v}\n'
+
+        return string
 
 params = {
         'a' : 1,
@@ -13,16 +19,6 @@ params = {
         }
 
 dict_test = DictTest(**params)
-print(dict_test.dict)
-
-def update_param(x, p, dEdx, dt, tau, mu, T, dW):
-    m = mu * tau**2
-    x += p * dt / (2*m)
-    p += -tau * p * dt / m - dEdx
-    if T > 0:
-        p += (T * tau)**0.5 * dW
-    x += p * dt / (2*m)
-    return x, p
-
-
-
+string = "test\n"
+string += f'{dict_test}'
+print(string)

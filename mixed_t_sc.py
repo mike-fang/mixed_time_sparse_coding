@@ -52,8 +52,6 @@ class MixedTimeSC_NoMo:
     def get_ds(self, s, x, A, dW=0):
         ds = -self.dEds(S[j], X[j], A) * dt / self.tau_s + dW_s[i, j] / self.tau_s**0.5
     def train(self, loader, tspan, out_t=None, init_sA=None, no_noise=False):
-        t0 = time()
-        print('Training ...')
         # Start tspan at 0
         tspan -= tspan.min()
 
@@ -125,8 +123,6 @@ class MixedTimeSC_NoMo:
         solns['A'] = A_soln
         solns['T'] = out_t
         solns['S'] = u_soln
-
-        print(f'Training completed in {time() - t0:.2f} seconds')
 
         return solns
     def show_evolution(self, soln, n_frames=100, overlap=3, f_out=None):
@@ -219,6 +215,14 @@ class Energy_L0:
     def dA(self, s, x, A):
         u = (s - self.s0*(np.sign(s))) * (np.abs(s) > self.s0)
         return (A @ u - x)[:, None] @ u[None, :] / self.sigma**2
+    def __repr__(self):
+        desc = f'''Energy_L0
+l0 : {self.l0}
+l1 : {self.l1}
+s0 : {self.s0:.4f}
+positive : {self.positive}
+        '''
+        return desc
 
 def update_param(p, dEdx, dt, tau, mu, T=1, dW=None):
     if dW is None:
@@ -339,8 +343,8 @@ class MixedTimeSC:
         solns['T'] = out_t
         solns['S'] = u_soln
 
-        print(f'Training completed in {time() - t0:.2f} seconds')
-
+        self.desc = self.get_desc(tspan, loader)
+        print(self.desc)
         return solns
     def show_evolution(self, soln, n_frames=100, overlap=3, f_out=None):
         fig, axes = plt.subplots(ncols=2, figsize=(14, 6))
@@ -413,6 +417,18 @@ class MixedTimeSC:
         plt.show()
     def __getattr__(self, name):
         return self.params[name]
+    def get_desc(self, tspan, loader):
+        desc = "Mixed Time Sparse Coding Model\n"
+        desc += f"n_dim: {self.n_dim}\n\
+n_sparse: {self.n_sparse}\n\n"
+        desc += f"-- ENERGY --\n {self.energy}\n"
+        desc += f"-- LOADER --\n {loader}\n"
+        desc += f"tspan: {tspan}\n"
+        desc += "-- PARAMS --\n"
+        for k, v in self.params.items():
+            desc += f'{k}: {v}\n'
+        return desc
+
 
 if __name__ == '__main__':
     # Hyper-params
@@ -423,7 +439,7 @@ if __name__ == '__main__':
             'tau_x': 1e3,
             'tau_A': 1e4,
             'mu_s': .0,
-            'mu_A': 1,
+            'mu_A': .010,
             }
 
     # Define energy
@@ -431,6 +447,7 @@ if __name__ == '__main__':
     l0 = .5
     sigma = .5
     energy = Energy_L0(sigma, l0, l1, positive=True)
+    print(energy)
 
     # Build dataset
     theta = (np.linspace(0, 2*np.pi, n_sparse, endpoint=False))
@@ -441,7 +458,7 @@ if __name__ == '__main__':
     loader = Loader(X, n_batch)
 
     # Time range
-    T_RANGE = 1e5
+    T_RANGE = 1e4
     T_STEPS = int(T_RANGE)
     tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 
@@ -450,6 +467,7 @@ if __name__ == '__main__':
     t0 = time()
     solns_dict = mt_sc.train(loader, tspan)
     solns = Solutions(solns_dict)
+    print(mt_sc.desc)
     solns.save()
     solns2 = Solutions.load()
 

@@ -79,6 +79,12 @@ class HVLinesLoader:
         else:
             self.bases = bases
         return self.bases
+    def __repr__(self):
+        desc = 'HVLinesLoader\n'
+        desc += f'H, W: {self.H}, {self.W}\n'
+        desc += f'n_batch: {self.n_batch}\n'
+        desc += f'p: {self.p}'
+        return desc
 
 class Solutions:
     @classmethod
@@ -199,15 +205,12 @@ class Solutions_H5:
     def __getattr__(self, key):
         return self.h5_file[key][:]
 
-
-
-
-
 if __name__ == '__main__':
 
     H = W = 10
     p = .1
     loader = HVLinesLoader(H, W, 100, p)
+    print(loader)
     plt.imshow(loader.get_batch(reshape=True)[0])
     plt.show()
     assert False

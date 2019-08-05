@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pylab as plt
 from matplotlib import animation
 from loaders import *
-from mixed_t_sc import save_soln
 from tqdm import tqdm
 from visualization import show_img_evo
 
