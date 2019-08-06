@@ -37,6 +37,12 @@ class Loader:
         if self.sigma > 0:
             batch += np.random.normal(0, self.sigma, size=batch.shape)
         return batch
+    def __repr__(self):
+        str_ = '<Data Loader>\n'
+        str_ += f'n_batch: {self.n_batch}\n'
+        str_ += f'X: {self.X}\n'
+        return str_
+
 
 class HVLinesLoader:
     def __init__(self, H, W, n_batch, p=0.1):

@@ -9,6 +9,7 @@ from time import time
 from tqdm import tqdm
 import pickle
 import shutil
+from glob import glob
 
 FILE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -41,7 +42,7 @@ positive : {self.positive}
         '''
         return desc
 
-def save_results(model, soln, loader, dir_name=None, overwrite=False):
+def save_model(model, soln, loader, dir_name=None, overwrite=False):
     if dir_name in [None, 'tmp']:
         time_stamp = f'{time():.0f}'
         dir_name = os.path.join(FILE_DIR, 'results', 'tmp', time_stamp)
@@ -57,13 +58,38 @@ def save_results(model, soln, loader, dir_name=None, overwrite=False):
     model_name = os.path.join(dir_name, 'model.pkl')
     soln_name = os.path.join(dir_name, 'soln.h5')
     param_name = os.path.join(dir_name, 'params.txt')
-    solution = Solutions_H5(f_name=soln_name, solns=soln, im_shape=loader.im_shape)
+    try:
+        im_shape = loader.im_shape
+    except:
+        im_shape = None
+
+    solution = Solutions_H5(f_name=soln_name, solns=soln, im_shape=im_shape)
 
     #solution.save(soln_name, overwrite=True)
     with open(model_name, 'wb') as f:
         pickle.dump(model, f, pickle.HIGHEST_PROTOCOL)
     with open(param_name, 'w') as f:
         f.write(model.get_desc(loader))
+    return solution
+
+def load_model(dir_name=None):
+    if dir_name is None:
+        # Pick the newest tmp file if none given
+        tmp_files = glob(os.path.join(FILE_DIR, 'results', 'tmp', '*'))
+        tmp_files.sort()
+        dir_name = tmp_files[-1]
+    if not os.path.isdir(dir_name):
+        raise Exception(f'Directory {dir_name} does not exists')
+    model_name = os.path.join(dir_name, 'model.pkl')
+    soln_name = os.path.join(dir_name, 'soln.h5')
+    param_name = os.path.join(dir_name, 'params.txt')
+
+    solution = Solutions_H5.load_h5(f_name=soln_name)
+    with open(model_name, 'rb') as f:
+        model = pickle.load(f)
+    with open(param_name, 'r') as f:
+        print(f'Model loaded from {model_name}')
+        print(f.read())
     return solution
 
 class MixedTimeSC:
@@ -299,7 +325,7 @@ if __name__ == '__main__':
     loader = Loader(X, n_batch)
 
     # Time range
-    T_RANGE = 1e5
+    T_RANGE = 1e4
     T_STEPS = int(T_RANGE)
     tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 
@@ -307,7 +333,8 @@ if __name__ == '__main__':
 
     t0 = time()
     solns_dict = mt_sc.train(loader, tspan)
-    solns = Solutions(solns_dict)
+    save_model(mt_sc, solns_dict, loader)
+    load_model()
 
     #solns_db = save_soln(solns)
     mt_sc.show_evolution(solns_dict, n_frames=100)

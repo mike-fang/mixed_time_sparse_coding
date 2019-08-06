@@ -40,7 +40,7 @@ def train_mtsc(f_name=None, n_frames=1000):
     out_t = tspan[::skip]
     mtsc = MixedTimeSC(n_dim, n_sparse, energy, **params)
     soln_dict = mtsc.train(loader, tspan, out_t=out_t, init_sA=None)
-    soln = save_results(mtsc, soln_dict, loader, f_name, overwrite=True)
+    soln = save_model(mtsc, soln_dict, loader, f_name, overwrite=True)
     return soln
 
 def train_dsc():
