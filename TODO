@@ -6,6 +6,9 @@ IDEAS:
     Should be fine, take s to {s1, s2, .., sN}, N being the batch size
 
 TODO:
+- Output loss, etc.
+- Save model after training in dir
+- Visualize 1D data
 - Do parameter search
 V Add momentum term
 V Specify which times to save

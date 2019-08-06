@@ -131,7 +131,7 @@ class Solutions:
     def save(self, f_name=None, overwrite=False):
         if f_name in [None, 'temp']:
             # Output to temp file if none specified
-            time_stamp = f'{time():.0f}'
+            time_stamp = f'{time():.0f}.pkl'
             f_name = os.path.join(FILE_DIR, 'results', 'tmp', time_stamp)
         if os.path.isfile(f_name) and overwrite:
             os.unlink(f_name)

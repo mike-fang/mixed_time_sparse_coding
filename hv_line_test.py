@@ -22,15 +22,15 @@ loader = HVLinesLoader(H, W, n_batch, p=p)
 n_sparse = 10
 n_dim = int(H * W)
 params = {
-        'tau_s': 1e1,
-        'tau_x': 3e2,
-        'tau_A': 1e4,
+        'tau_s': 1e2,
+        'tau_x': 5e3,
+        'tau_A': 5e5,
         'mu_s': .0,
         'mu_A': .01,
         }
 
 # Time range
-T_RANGE = 1e5
+T_RANGE = 1e6
 T_STEPS = int(T_RANGE)
 tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 
@@ -54,8 +54,8 @@ def train_dsc():
     soln = Solutions(soln_dict, im_shape=(H, W))
     soln.save(f_name='./results/hv_line_dsc.soln')
 
-#soln = train_mtsc('./results/hv_mtsc_momentum.soln', n_frames=1000)
-soln = Solutions_H5.load_h5('./hv_mtsc.soln')
+soln = train_mtsc('./results/hv_mtsc_momentum.soln', n_frames=1000)
+#soln = Solutions_H5.load_h5('./hv_mtsc.soln')
 reshaped_params = soln.get_reshaped_params()
 A = reshaped_params['A']
 R = reshaped_params['R']
