@@ -156,7 +156,9 @@ class MixedTimeSC:
                 dEdA = self.energy.dA(S[j], X[j], A)
 
                 # Claculate gradient
-                dS, dp_S = self.update_param(p_S[j], dEds, dt, tau_s, mu_s, dW=dW_s[i, j])
+                dW = np.random.normal(loc=0, scale=(2 * dt)**0.5, size=S[j].shape)
+                #dS, dp_S = self.update_param(p_S[j], dEds, dt, tau_s, mu_s, dW=dW_s[i, j])
+                dS, dp_S = self.update_param(p_S[j], dEds, dt, tau_s, mu_s, dW=dW)
                 dAj, dp_Aj = self.update_param(p_A, dEdA, dt, tau_A, mu_A)
 
                 # Update variables
@@ -276,9 +278,9 @@ if __name__ == '__main__':
     params = {
             'tau_s': 1e2,
             'tau_x': 1e3,
-            'tau_A': 1e4,
-            'mu_s': .0,
-            'mu_A': .05,
+            'tau_A': 1e5,
+            'mu_s': .05,
+            'mu_A': .00,
             }
 
     # Define energy
@@ -297,7 +299,7 @@ if __name__ == '__main__':
     loader = Loader(X, n_batch)
 
     # Time range
-    T_RANGE = 1e4
+    T_RANGE = 1e5
     T_STEPS = int(T_RANGE)
     tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 

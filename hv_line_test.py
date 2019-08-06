@@ -22,15 +22,15 @@ loader = HVLinesLoader(H, W, n_batch, p=p)
 n_sparse = 20
 n_dim = int(H * W)
 params = {
-        'tau_s': 5e1,
-        'tau_x': 5e2,
-        'tau_A': 5e4,
+        'tau_s': 1e2,
+        'tau_x': 3e3,
+        'tau_A': 1e5,
         'mu_s': .0,
         'mu_A': .05,
         }
 
 # Time range
-T_RANGE = 1e3
+T_RANGE = 1e6
 T_STEPS = int(T_RANGE)
 tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 
