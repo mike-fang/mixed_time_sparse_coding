@@ -2,12 +2,13 @@ import numpy as np
 import matplotlib.pylab as plt
 from matplotlib import animation
 from time import time
-from loaders import Loader, Solutions
+from loaders import Loader, Solutions_H5, Solutions
 import h5py
 import os.path
 from time import time
 from tqdm import tqdm
 import pickle
+import shutil
 
 FILE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -40,27 +41,52 @@ positive : {self.positive}
         '''
         return desc
 
-def update_param(p, dEdx, dt, tau, mu, T=1, dW=None):
-    if dW is None:
-        T = 0
-    if mu == 0:
-        # No mass
-        dx = -dEdx / tau
-        if T > 0:
-            dx += (T / tau)**0.5 * dW
-        return dx, 0
+def save_results(model, soln, loader, dir_name=None, overwrite=False):
+    if dir_name in [None, 'tmp']:
+        time_stamp = f'{time():.0f}'
+        dir_name = os.path.join(FILE_DIR, 'results', 'tmp', time_stamp)
+    if not os.path.isdir(dir_name):
+        os.mkdir(dir_name)
     else:
-        # Mass
-        m = mu * tau**2
-        dx = p * dt / (2*m)
-        dp = -tau * p * dt / m - dEdx
-        if T > 0:
-            dp += (T * tau)**0.5 * dW
-        dx += p * dt / (2*m)
-        return dx, dp
+        if overwrite:
+            print(f'Overwriting {dir_name}')
+            shutil.rmtree(dir_name)
+            os.mkdir(dir_name)
+        else:
+            raise Exception(f'Directory {dir_name} already exists')
+    model_name = os.path.join(dir_name, 'model.pkl')
+    soln_name = os.path.join(dir_name, 'soln.h5')
+    param_name = os.path.join(dir_name, 'params.txt')
+    solution = Solutions_H5(f_name=soln_name, solns=soln, im_shape=loader.im_shape)
+
+    #solution.save(soln_name, overwrite=True)
+    with open(model_name, 'wb') as f:
+        pickle.dump(model, f, pickle.HIGHEST_PROTOCOL)
+    with open(param_name, 'w') as f:
+        f.write(model.get_desc(loader))
+    return solution
 
 class MixedTimeSC:
-    def __init__(self, n_dim, n_sparse, energy, **params):
+    @staticmethod
+    def update_param(p, dEdx, dt, tau, mu, T=1, dW=None):
+        if dW is None:
+            T = 0
+        if mu == 0:
+            # No mass
+            dx = -dEdx / tau
+            if T > 0:
+                dx += (T / tau)**0.5 * dW
+            return dx, 0
+        else:
+            # Mass
+            m = mu * tau**2
+            dx = p * dt / (2*m)
+            dp = -tau * p * dt / m - dEdx
+            if T > 0:
+                dp += (T * tau)**0.5 * dW
+            dx += p * dt / (2*m)
+            return dx, dp
+    def __init__(self, n_dim, n_sparse, energy, im_shape=None, **params):
         self.n_dim = n_dim
         self.n_sparse = n_sparse
         self.energy = energy
@@ -130,8 +156,8 @@ class MixedTimeSC:
                 dEdA = self.energy.dA(S[j], X[j], A)
 
                 # Claculate gradient
-                dS, dp_S = update_param(p_S[j], dEds, dt, tau_s, mu_s, dW=dW_s[i, j])
-                dAj, dp_Aj = update_param(p_A, dEdA, dt, tau_A, mu_A)
+                dS, dp_S = self.update_param(p_S[j], dEds, dt, tau_s, mu_s, dW=dW_s[i, j])
+                dAj, dp_Aj = self.update_param(p_A, dEdA, dt, tau_A, mu_A)
 
                 # Update variables
                 S[j] += dS
@@ -161,9 +187,7 @@ class MixedTimeSC:
         solns['T'] = out_t
         solns['S'] = u_soln
 
-        self.desc = self.get_desc(tspan, loader)
-        if dir_out is not None:
-            self.save_results(solns, loader, tspan, dir_out)
+        #self.desc = self.get_desc(loader)
         return solns
     def show_evolution(self, soln, n_frames=100, overlap=3, f_out=None):
         fig, axes = plt.subplots(ncols=2, figsize=(14, 6))
@@ -234,33 +258,16 @@ class MixedTimeSC:
         if f_out is not None:
             anim.save(f_out)
         plt.show()
-    def get_desc(self, tspan, loader):
+    def get_desc(self, loader):
         desc = "Mixed Time Sparse Coding Model\n"
         desc += f"n_dim: {self.n_dim}\n\
 n_sparse: {self.n_sparse}\n\n"
         desc += f"-- ENERGY --\n {self.energy}\n"
-        desc += f"-- LOADER --\n {loader}\n\n"
-        desc += f"tspan: {tspan}\n"
+        desc += f"-- LOADER --\n {loader}\n"
         desc += "-- PARAMS --\n"
         for k, v in self.params.items():
             desc += f'{k}: {v}\n'
         return desc
-    def save_results(self, soln, loader, tspan, dir_name='tmp'):
-        if dir_name in [None, 'tmp']:
-            time_stamp = f'{time():.0f}'
-            dir_name = os.path.join(FILE_DIR, 'results', 'tmp', time_stamp)
-        if not os.path.isdir(dir_name):
-            os.mkdir(dir_name)
-        model_name = os.path.join(dir_name, 'model.pkl')
-        soln_name = os.path.join(dir_name, 'soln.pkl')
-        param_name = os.path.join(dir_name, 'params.txt')
-        solution = Solutions(soln)
-
-        solution.save(soln_name, overwrite=True)
-        with open(model_name, 'wb') as f:
-            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
-        with open(param_name, 'w') as f:
-            f.write(self.get_desc(tspan, loader))
 
 if __name__ == '__main__':
     # Hyper-params
@@ -271,7 +278,7 @@ if __name__ == '__main__':
             'tau_x': 1e3,
             'tau_A': 1e4,
             'mu_s': .0,
-            'mu_A': .10,
+            'mu_A': .05,
             }
 
     # Define energy

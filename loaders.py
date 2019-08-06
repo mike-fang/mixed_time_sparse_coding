@@ -42,6 +42,7 @@ class HVLinesLoader:
     def __init__(self, H, W, n_batch, p=0.1):
         self.H = H
         self.W = W
+        self.im_shape = (H, W)
         self.n_batch = n_batch
         self.p = p
 
@@ -142,6 +143,7 @@ class Solutions:
 class Solutions_H5:
     @classmethod
     def load_h5(cls, f_name=None):
+        print(f_name)
         if f_name is None:
             # Pick the newest tmp file if none given
             tmp_files = glob(os.path.join(FILE_DIR, 'results', 'tmp', '*'))
