@@ -144,7 +144,7 @@ class MixedTimeSC:
         new_batch = (x_idx[1:] - x_idx[:-1]).astype(bool)
 
         # Precalculating Wiener process
-        dW_s = np.random.normal(loc=0, scale= (2 * dT[:, None, None])**0.5, size=(t_steps - 1, loader.n_batch, self.n_sparse)) 
+        #dW_s = np.random.normal(loc=0, scale= (2 * dT[:, None, None])**0.5, size=(t_steps - 1, loader.n_batch, self.n_sparse)) 
 
         # Init params and solns
         if init_sA is None:
