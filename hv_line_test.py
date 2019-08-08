@@ -7,8 +7,8 @@ from matplotlib import animation
 from visualization import show_img_evo
 
 # Define energy
-l1 = .5
-l0 = .6
+l1 = .8
+l0 = .5
 sigma = .2
 energy = Energy_L0(sigma, l0, l1, positive=True)
 
@@ -30,7 +30,7 @@ params = {
         }
 
 # Time range
-T_RANGE = 2e6
+T_RANGE = 5e6
 T_STEPS = int(T_RANGE)
 tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 
@@ -69,9 +69,9 @@ def train_dsc():
     soln = Solutions(soln_dict, im_shape=(H, W))
     soln.save(f_name='./results/hv_line_dsc.soln')
 
-out_dir = './results/hv_mtsc_momentum_l0_08'
-#soln = train_mtsc(out_dir, n_frames=int(1e5))
-soln = Solutions_H5.load_h5(os.path.join(out_dir, 'soln.h5'))
+out_dir = './results/hv_mtsc_momentum_l1_8_l0_5'
+soln = train_mtsc(out_dir, n_frames=int(1e6))
+#soln = Solutions_H5.load_h5(os.path.join(out_dir, 'soln.h5'))
 reshaped_params = soln.get_reshaped_params()
 A = reshaped_params['A']
 R = reshaped_params['R']
