@@ -78,4 +78,4 @@ R = reshaped_params['R']
 X = reshaped_params['X']
 
 XRA = np.concatenate((X, R, A), axis=1)
-show_img_evo(XRA, ratio = 10/3, n_frames=1000)
+show_img_evo(XRA, ratio = 10/3, n_frames=1000, out_file='./figures/HV_lines_w_mass.mp4')
