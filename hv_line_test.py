@@ -70,7 +70,7 @@ def train_dsc():
     soln.save(f_name='./results/hv_line_dsc.soln')
 
 out_dir = './results/hv_mtsc_momentum_l1_8_l0_5'
-soln = train_mtsc(out_dir, n_frames=int(1e6))
+soln = train_mtsc(out_dir, n_frames=int(1e5))
 #soln = Solutions_H5.load_h5(os.path.join(out_dir, 'soln.h5'))
 reshaped_params = soln.get_reshaped_params()
 A = reshaped_params['A']
