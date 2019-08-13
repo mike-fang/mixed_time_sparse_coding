@@ -6,15 +6,15 @@ IDEAS:
     Should be fine, take s to {s1, s2, .., sN}, N being the batch size
 
 TODO:
+- Make variable mass, etc.
 - Output loss, etc.
-- Save model after training in dir
+V Save model after training in dir
 - Visualize 1D data
 - Do parameter search
 V Add momentum term
 V Specify which times to save
 V Make solutions class
 - Figure out time scale and correspondance w/ step size
-- Plot decrease in loss or something
 V Visualize X, R, A, S in same screen
 V debug HVLines
     - Make visualizer work

@@ -91,7 +91,8 @@ class DiscreteSC:
         solns = {
                 'A' : A_soln,
                 'S' : u_soln,
-                'X' : X_soln
+                'X' : X_soln,
+                'T' : np.arange(n_iter)
                 }
         return solns
     def show_evolution(self, soln, f_out=None):
@@ -169,4 +170,3 @@ if __name__ == '__main__':
     solns_dict = dsc.train(loader, n_iter=100, max_iter_s=int(1e2))
 
     dsc.show_evolution(solns_dict)
-

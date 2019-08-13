@@ -13,13 +13,13 @@ sigma = .2
 energy = Energy_L0(sigma, l0, l1, positive=True)
 
 #Define loader
-H = W = 5
-n_batch = 10
-p = 0.1
+H = W = 4
+n_batch = H + W
+p = 0.2
 loader = HVLinesLoader(H, W, n_batch, p=p)
 
 # Hyper-params
-n_sparse = 10
+n_sparse = H + W
 n_dim = int(H * W)
 params = {
         'tau_s': 1e2,
@@ -30,7 +30,7 @@ params = {
         }
 
 # Time range
-T_RANGE = 5e6
+T_RANGE = 1e6
 T_STEPS = int(T_RANGE)
 tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
 
@@ -69,13 +69,13 @@ def train_dsc():
     soln = Solutions(soln_dict, im_shape=(H, W))
     soln.save(f_name='./results/hv_line_dsc.soln')
 
-out_dir = './results/hv_mtsc_momentum_l1_8_l0_5'
-soln = train_mtsc(out_dir, n_frames=int(1e6))
-#soln = Solutions_H5.load_h5(os.path.join(out_dir, 'soln.h5'))
+#soln = train_mtsc(None, n_frames=int(1e5))
+out_dir = './results/hv_mtsc_4x4'
+soln = Solutions_H5.load_h5(os.path.join(out_dir, 'soln.h5'))
 reshaped_params = soln.get_reshaped_params()
 A = reshaped_params['A']
 R = reshaped_params['R']
 X = reshaped_params['X']
 
 XRA = np.concatenate((X, R, A), axis=1)
-show_img_evo(XRA, ratio = 10/3, n_frames=1000, out_file='./figures/HV_lines_w_mass.mp4')
+show_img_evo(XRA, ratio = (H + W)/3, n_frames=100, out_file=None)
