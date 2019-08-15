@@ -2,8 +2,7 @@ import matplotlib.pylab as plt
 import numpy as np
 from matplotlib import animation
 import h5py
-from loaders import Solutions_H5
-from scipy.stats import binom
+from helpers import Solutions_H5
 
 def get_grid_axes(n_axes, ratio=1.5):
     # Get n_rows / n_cols
@@ -76,7 +75,7 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
     plt.show()
 
 if __name__ == '__main__':
-    soln = Solutions_H5('./results/hv_mtsc_4x4/soln.h5')
+    soln = Solutions_H5('./results/hv_dsc_4x4/soln.h5')
     reshaped_params = soln.get_reshaped_params()
     A = reshaped_params['A']
     R = reshaped_params['R']
@@ -87,12 +86,14 @@ if __name__ == '__main__':
 
     time_bins = 50
     n_dict = 8
-    sparsity = sparsity[:-100].flatten()
+    sparsity = sparsity[-100:].flatten()
 
     plt.figure()
-    plt.hist(sparsity, bins=np.arange(11), density=True)
+    count = []
+
+    plt.hist(sparsity + 0.5, bins=np.arange(11), density=True, ec='k', fc=(0.8,)*3)
     mu = sparsity.mean()/n_dict
     binom_pmf = binom.pmf(np.arange(n_dict + 1), n=n_dict, p=mu)
-    plt.plot(np.arange(n_dict + 1) + 0.5, binom_pmf, 'r--')
+    plt.plot(np.arange(n_dict + 1) + 0.5, binom_pmf, 'ro-')
     plt.title(fr'$p \approx {mu:3f}$')
     plt.show()

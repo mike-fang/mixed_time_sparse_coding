@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pylab as plt
 from matplotlib import animation
 from time import time
-from loaders import Loader, Solutions_H5, Solutions
+from helpers import Loader, Solutions_H5, Solutions, save_model, load_model
 import h5py
 import os.path
 from time import time
@@ -41,56 +41,6 @@ s0 : {self.s0:.4f}
 positive : {self.positive}
         '''
         return desc
-
-def save_model(model, soln, loader, dir_name=None, overwrite=False):
-    if dir_name in [None, 'tmp']:
-        time_stamp = f'{time():.0f}'
-        dir_name = os.path.join(FILE_DIR, 'results', 'tmp', time_stamp)
-    if not os.path.isdir(dir_name):
-        os.mkdir(dir_name)
-    else:
-        if overwrite:
-            print(f'Overwriting {dir_name}')
-            shutil.rmtree(dir_name)
-            os.mkdir(dir_name)
-        else:
-            raise Exception(f'Directory {dir_name} already exists')
-    model_name = os.path.join(dir_name, 'model.pkl')
-    soln_name = os.path.join(dir_name, 'soln.h5')
-    param_name = os.path.join(dir_name, 'params.txt')
-    try:
-        im_shape = loader.im_shape
-    except:
-        im_shape = None
-
-    solution = Solutions_H5(f_name=soln_name, solns=soln, im_shape=im_shape)
-
-    #solution.save(soln_name, overwrite=True)
-    with open(model_name, 'wb') as f:
-        pickle.dump(model, f, pickle.HIGHEST_PROTOCOL)
-    with open(param_name, 'w') as f:
-        f.write(model.get_desc(loader))
-    return solution
-
-def load_model(dir_name=None):
-    if dir_name is None:
-        # Pick the newest tmp file if none given
-        tmp_files = glob(os.path.join(FILE_DIR, 'results', 'tmp', '*'))
-        tmp_files.sort()
-        dir_name = tmp_files[-1]
-    if not os.path.isdir(dir_name):
-        raise Exception(f'Directory {dir_name} does not exists')
-    model_name = os.path.join(dir_name, 'model.pkl')
-    soln_name = os.path.join(dir_name, 'soln.h5')
-    param_name = os.path.join(dir_name, 'params.txt')
-
-    solution = Solutions_H5.load_h5(f_name=soln_name)
-    with open(model_name, 'rb') as f:
-        model = pickle.load(f)
-    with open(param_name, 'r') as f:
-        print(f'Model loaded from {model_name}')
-        print(f.read())
-    return solution
 
 class MixedTimeSC:
     @staticmethod
