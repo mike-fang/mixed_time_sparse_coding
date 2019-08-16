@@ -6,7 +6,10 @@ IDEAS:
     Should be fine, take s to {s1, s2, .., sN}, N being the batch size
 
 TODO:
+
 - Make variable mass, etc.
+    - Using torch..
+    - For each param, define mass, tau as a attribute
 - Output loss, etc.
 V Save model after training in dir
 - Visualize 1D data
