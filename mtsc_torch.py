@@ -10,7 +10,23 @@ class MTParameter(Parameter):
         self.mu = 0
         self.tau = None
         self.momentum = th.zeros(self.shape)
-
+    @property
+    def mass(self):
+        return self.mu * self.tau**2
+     
+def update_x(param, dt, dW=None):
+    if param.tau == 0:
+        return
+    if param.mu == 0:
+        param.data += -param.grad/param.tau * dt
+        if dW is not None:
+            param.data += dW / param.tau**0.5
+    else:
+        param.data += param.momentum * dt / param.mass
+def update_p(param, dt, dW=None):
+    param.momentum += -param.tau * param.momentum * dt / param.mass - param.grad
+    if dW is not None:
+        param.momentum += param.tau**0.5 * dW
 
 class MixedTimeSC(Module):
     def __init__(self, n_dim, n_dict, n_batch, tau, mass, positive=False):
@@ -31,11 +47,11 @@ class MixedTimeSC(Module):
         self.l1 = MTParameter(th.Tensor(1))
         self.nu = MTParameter(th.Tensor(1))
         # nu = log(pi / (1-pi)) log odds ratio
-
         self.reset_params()
     def reset_params(self):
         self.A.data.normal_()
-        self.s.data *= 0
+        self.s.data.normal_()
+        #self.s.data *= 0
         self.rho.data = th.tensor(1.)
         self.l1.data = th.tensor(1.)
         self.nu.data = th.tensor(1.)
@@ -45,7 +61,6 @@ class MixedTimeSC(Module):
                 p.tau = self.tau[n]
                 if n in self.mass:
                     p.mu = self.mass[n]
-
     def energy(self, x):
         A = self.A
         s0 = -self.l1 * th.log(F.sigmoid(-self.nu))
@@ -54,9 +69,33 @@ class MixedTimeSC(Module):
     def __call__(self, x):
         return self.energy(x)
 
-def update_param(param, dW=None):
-    if param.grad is not None:
+class MTSCOptimizer:
+    def __init__(self, model):
+        self.model = model
+    def train(self, loader, tspan):
+        # Start tspan at 0
+        tspan -= tspan.min()
 
+        # If not specified, output all time points
+        if out_t is None:
+            out_t = tspan
+        n_out = len(out_t)
+
+        # Definite dt, t_steps
+        t_steps = len(tspan)
+        dT = tspan[1:] - tspan[:-1]
+        
+        # Find where to load next X batch
+        x_idx = (tspan // self.params['tau_x']).astype(int)
+        new_batch = (x_idx[1:] - x_idx[:-1]).astype(bool)
+
+
+    def update_params(self, dt, dW=None):
+        for p in self.parameters():
+            if p.mu != 0:
+                # Half step x
+                update_x(p, dt/2)
+        self.energy
 
 
 def update_param(p, dt, tau, mu, T=1, dW=None):
@@ -102,9 +141,8 @@ if __name__ == '__main__':
         
     mtsc = MixedTimeSC(n_dict, n_dict, n_batch, tau, mass)
     #mtsc.state_dict()['A'].mu = 1
-    mass = {
-            'A' : 1
-            }
+    E = mtsc(X)
+    E.backward()
     for n, p in mtsc.named_parameters():
-        print(p.momentum)
+        print(p.grad)
 
