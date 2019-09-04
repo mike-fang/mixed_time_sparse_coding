@@ -7,9 +7,10 @@ IDEAS:
 
 TODO:
 
-- Make variable mass, etc.
+- Make variable tau, etc.
     - Using torch..
-    - For each param, define mass, tau as a attribute
+        - rewrite loader in torch
+    v For each param, define mass, tau as a attribute
 - Output loss, etc.
 V Save model after training in dir
 - Visualize 1D data

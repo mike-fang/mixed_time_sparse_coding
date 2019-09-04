@@ -1,14 +1,10 @@
 import torch as th
 from torch.nn import Parameter
-from time import time
 
+p = Parameter(th.zeros(5))
+data = th.zeros(3, 5)
+data[0] = p
+p.data += 1
+data[1] = p
 
-N = int(1e7)
-dW = th.zeros(N)
-t0 = time()
-dW.normal_()
-print(time() - t0)
-
-t0 = time()
-dW.normal_()
-print(time() - t0)
+print(data)
