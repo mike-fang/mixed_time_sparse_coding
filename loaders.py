@@ -11,14 +11,16 @@ class Loader:
         sigma: The stdev of the normal error added (default: 0)
 
     """
-    def __init__(self, X, n_batch, sigma=0):
+    def __init__(self, X, n_batch, shuffle=True, sigma=0):
         self.X = X
         self.n_batch = n_batch
         self.sigma = sigma
+        self.shuffle = shuffle
         self.reset()
     def reset(self):
-        rand_idx = th.randperm(len(self.X))
-        self.X = self.X[rand_idx]
+        if self.shuffle:
+            rand_idx = th.randperm(len(self.X))
+            self.X = self.X[rand_idx]
         self.batch_idx = 0
     def get_batch(self):
         batch_end = self.batch_idx + self.n_batch
