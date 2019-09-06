@@ -74,6 +74,65 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
         #animation.ImageMagickFileWriter()
     plt.show()
 
+def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
+    X = soln['x']
+    S = soln['s']
+    t_steps, n_batch, n_dim = X.shape
+    assert n_dim == 2
+    _, n_dict, _ = S.shape
+    idx_stride = int(t_steps / n_frames)
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    # Create scatter plots for s and x
+    sx, sy = [], []
+    xx, xy = [], []
+    scat_s = ax.scatter(sx, sy, s=5, c='b', label=rf'$A \mathbf {{u}}$ : Reconstruction')
+    scat_x = ax.scatter(xx, xy, s=50, c='r', label=rf'$\mathbf {{x}}$ : Data')
+
+    # Create arrows for tracking A
+    A_arrow_0, = ax.plot([], [], c='g', label=rf'$A$ : Dictionary bases')
+    A_arrows = [A_arrow_0]
+    for A in range(n_dict):
+        A_arrow, = ax.plot([], [], c='g')
+        A_arrows.append(A_arrow)
+
+    ax.set_xlim(-15, 15)
+    ax.set_ylim(-15, 15)
+    ax.set_aspect(1)
+    fig.legend(loc='lower right')
+
+    def animate(nf):
+        idx0 = max(0, (nf - overlap + 1) * idx_stride)
+        idx1 = (nf + 1) * idx_stride 
+
+        T = soln['T'][idx0:idx1]
+        r = soln['r'][idx0:idx1]
+        s = soln['s'][idx0:idx1].reshape((-1, n_dict))
+
+        ti = T[0]
+        tf = T[-1] 
+
+        A = soln['A'][idx1]
+    
+        scat_s.set_offsets(r.reshape((-1, 2)))
+        scat_s.set_array(np.linspace(0, 1, len(T)))
+        scat_s.cmap = plt.cm.get_cmap('Blues')
+
+        x = soln['x'][idx0:idx1].reshape((-1, n_dim))
+        scat_x.set_offsets(x)
+
+        for n in range(n_dict):
+            A_arrows[n].set_xdata([0, A[0, n]])
+            A_arrows[n].set_ydata([0, A[1, n]])
+
+        fig.suptitle(rf'Time: ${ti:.2f} \tau - {tf:.2f} \tau$')
+
+    anim = animation.FuncAnimation(fig, animate, frames=n_frames-1, interval=100, repeat=True)
+    if f_out is not None:
+        anim.save(f_out)
+    plt.show()
+
 if __name__ == '__main__':
     soln = Solutions_H5('./results/hv_dsc_4x4/soln.h5')
     reshaped_params = soln.get_reshaped_params()

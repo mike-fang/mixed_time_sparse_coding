@@ -7,6 +7,9 @@ from loaders import StarLoader, Loader
 from tqdm import tqdm
 import matplotlib.pylab as plt
 from matplotlib import animation
+from visualization import show_2d_evo
+from solution_saver import Solutions, get_tmp_path
+import json
 
 class MTParameter(Parameter):
     def __init__(self, *args, **kwargs):
@@ -39,7 +42,14 @@ class MTParameter(Parameter):
             self.momentum += (self.temp * self.tau / dt)**0.5 * dW
      
 class MixedTimeSC(Module):
-    def __init__(self, n_dim, n_dict, n_batch, tau, mass, T, init=[None], positive=False):
+    @classmethod
+    def from_json(cls, f_name=None):
+        if f_name is None:
+            f_name = get_tmp_path(load=True, f_name = 'hyper_params.json')
+        with open(f_name, 'r') as f:
+            hp = json.load(f)
+        return cls(**hp)
+    def __init__(self, n_dim, n_dict, n_batch, tau={}, mass={}, T={}, positive=False):
         super().__init__()
         self.n_dim = n_dim
         self.n_dict = n_dict
@@ -50,10 +60,8 @@ class MixedTimeSC(Module):
         self.T = T
         self.positive = positive
 
-        self.init = init
         self.init_params()
-        self.set_properties()
-    def init_params(self, init=None):
+    def init_params(self, init=[None]):
         self.A = MTParameter(th.Tensor(self.n_dim, self.n_dict))
         self.s = MTParameter(th.Tensor(self.n_dict, self.n_batch))
         self.rho = MTParameter(th.Tensor(1))
@@ -61,8 +69,9 @@ class MixedTimeSC(Module):
         self.nu = MTParameter(th.Tensor(1))
 
         # nu = log(pi / (1-pi)) log odds ratio
-        self.reset_params()
-    def reset_params(self):
+        self.reset_params(init=init)
+        self.set_properties()
+    def reset_params(self, init=[None]):
         self.A.data.normal_()
         self.s.data.normal_()
         #self.s.data *= 0
@@ -70,8 +79,8 @@ class MixedTimeSC(Module):
         self.l1.data = th.tensor(1.)
         self.nu.data = th.tensor(1.)
         for n, p in self.named_parameters():
-            if n in self.init:
-                p.data = th.tensor(self.init[n])
+            if n in init:
+                p.data = th.tensor(init[n], dtype=th.float)
     def set_properties(self):
         for n, p in self.named_parameters():
             if n in self.tau:
@@ -123,6 +132,9 @@ class MixedTimeSC(Module):
         # If not specified, output all time points
         if out_t is None:
             out_t = tspan
+        elif isinstance(out_t, int):
+            skip = int(len(tspan) / out_t)
+            out_t = tspan[::skip]
         n_out = len(out_t)
 
         # Definite dt, t_steps
@@ -164,70 +176,29 @@ class MixedTimeSC(Module):
                 soln_counter += 1
 
         return soln
-
-def show_evolution(soln, n_frames=100, overlap=3, f_out=None):
-    X = soln['x']
-    S = soln['s']
-    t_steps, n_batch, n_dim = X.shape
-    assert n_dim == 2
-    _, n_dict, _ = S.shape
-    idx_stride = int(t_steps / n_frames)
-
-    fig, ax = plt.subplots(figsize=(6, 6))
-
-    # Create scatter plots for s and x
-    sx, sy = [], []
-    xx, xy = [], []
-    scat_s = ax.scatter(sx, sy, s=5, c='b', label=rf'$A \mathbf {{u}}$ : Reconstruction')
-    scat_x = ax.scatter(xx, xy, s=50, c='r', label=rf'$\mathbf {{x}}$ : Data')
-
-    # Create arrows for tracking A
-    A_arrow_0, = ax.plot([], [], c='g', label=rf'$A$ : Dictionary bases')
-    A_arrows = [A_arrow_0]
-    for A in range(n_dict):
-        A_arrow, = ax.plot([], [], c='g')
-        A_arrows.append(A_arrow)
-
-    ax.set_xlim(-15, 15)
-    ax.set_ylim(-15, 15)
-    ax.set_aspect(1)
-    fig.legend(loc='lower right')
-
-    def animate(nf):
-        idx0 = max(0, (nf - overlap + 1) * idx_stride)
-        idx1 = (nf + 1) * idx_stride 
-
-        T = soln['T'][idx0:idx1]
-        r = soln['r'][idx0:idx1]
-        s = soln['s'][idx0:idx1].reshape((-1, n_dict))
-
-        ti = T[0]
-        tf = T[-1] 
-
-        A = soln['A'][idx1]
-    
-        scat_s.set_offsets(r.reshape((-1, 2)))
-        scat_s.set_array(np.linspace(0, 1, len(T)))
-        scat_s.cmap = plt.cm.get_cmap('Blues')
-
-        x = soln['x'][idx0:idx1].reshape((-1, n_dim))
-        scat_x.set_offsets(x)
-
-        for n in range(n_dict):
-            A_arrows[n].set_xdata([0, A[0, n]])
-            A_arrows[n].set_ydata([0, A[1, n]])
-
-        fig.suptitle(rf'Time: ${ti:.2f} \tau - {tf:.2f} \tau$')
-
-    anim = animation.FuncAnimation(fig, animate, frames=n_frames-1, interval=100, repeat=True)
-    if f_out is not None:
-        anim.save(f_out)
-    plt.show()
+    @property
+    def hyper_params(self):
+        hyper_params = {
+                k : self.__dict__[k] for k in self.__dict__ if k in ['n_dim', 'n_dict', 'n_batch', 'tau', 'mass', 'T', 'positive']
+                }
+        return hyper_params
+    def save_hyper_params(self, f_name=None):
+        if f_name is None:
+            f_name = get_tmp_path(f_name = 'hyper_params.json')
+        with open(f_name, 'w') as f:
+            json.dump(self.hyper_params, f)
+        return self.hyper_params
+    def __repr__(self):
+        str_ = ('Mixed Time Sparse Coding Model with L0 Energy\n')
+        for k, v in self.hyper_params.items():
+            str_ += f'\t{k} : {v} \n'
+        return str_
 
 if __name__ == '__main__':
     n_dict = 3
     n_dim = 2
     n_batch = 3
+
     mass = {
             's' : .00,
             'A' : 0,
@@ -237,8 +208,8 @@ if __name__ == '__main__':
             }
     tau = {
             's': 1e2,
-            'x': 1e3,
-            'A': 1e5,
+            'x': 5e2,
+            'A': 1e4,
             'l1': None,
             'nu': None,
             'rho': None,
@@ -247,15 +218,25 @@ if __name__ == '__main__':
     init = {
             'l1' : 1.,
             'nu' : .5,
-            'rho' : .5,
+            'rho' : 1.,
             }
 
-    T_RANGE = 1e4
+    T_RANGE = 1e3
     T_STEPS = int(T_RANGE)
     tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
+    loader = StarLoader(n_basis=3, n_batch=n_batch)
 
-    mtsc = MixedTimeSC(n_dim, n_dict, n_batch, tau, mass, T, init=init, positive=True)
-    #loader = Loader(10 * th.eye(2), n_batch, shuffle=False)
-    loader = StarLoader(3, n_batch)
-    soln = mtsc.train(loader, tspan, None)
-    show_evolution(soln)
+    try:
+        mtsc = MixedTimeSC.from_json()
+        mtsc.load_state_dict(th.load(get_tmp_path(load=True, f_name='state_dict.pth')))
+    except:
+        mtsc = MixedTimeSC(n_dim, n_dict, n_batch, tau=tau, mass=mass, T=T, positive=True)
+        mtsc.reset_params(init=init)
+        th.save(mtsc.state_dict(), get_tmp_path(load=True, f_name='state_dict.pth'))
+
+    try:
+        soln = Solutions.load()
+    except:
+        soln_dict = mtsc.train(loader, tspan, None)
+        soln = Solutions(soln_dict)
+    show_2d_evo(soln)
