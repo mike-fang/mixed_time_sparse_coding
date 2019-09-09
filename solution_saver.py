@@ -59,7 +59,10 @@ class Solutions:
         self.n_frame, self.n_dim, self.n_dict = self.h5_file['A'].shape
         _, self.n_batch, _ = self.h5_file['x'].shape
     def get_reshaped_params(self, indices=None):
-        im_shape = self.h5_file['im_shape']
+        try:
+            im_shape = self.h5_file['im_shape']
+        except:
+            im_shape = self.h5_file.attrs['im_shape']
         if im_shape is 'None':
             print('No im_shape provided')
             return None
@@ -85,4 +88,3 @@ class Solutions:
         return self.h5_file[key][:]
     def __getattr__(self, key):
         return self.h5_file[key][:]
-

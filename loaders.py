@@ -1,4 +1,5 @@
 import torch as th
+import numpy as np
 from math import pi
 
 class Loader:
@@ -70,8 +71,8 @@ class HVLinesLoader:
     def reset(self):
         pass
     def get_batch(self, reshape=False):
-        S = np.random.binomial(1, self.p, size=(self.n_batch, self.W + self.H)).astype(float)
-        S *= np.random.random(S.shape)
+        S = th.Tensor(self.n_batch, self.W + self.H).bernoulli_(self.p)
+        S *= th.Tensor(self.n_batch, self.W + self.H).uniform_()
         batch = S @ self.bases
 
         if reshape:
@@ -79,7 +80,7 @@ class HVLinesLoader:
         else:
             return batch
     def set_bases(self, flatten=True):
-        bases = np.zeros((self.H + self.W, self.H, self.H))
+        bases = th.zeros((self.H + self.W, self.H, self.H))
         for i in range(self.H):
             bases[i, i] = 1
         for i in range(self.W):
@@ -89,6 +90,8 @@ class HVLinesLoader:
         else:
             self.bases = bases
         return self.bases
+    def __call__(self):
+        return self.get_batch()
     def __repr__(self):
         desc = 'HVLinesLoader\n'
         desc += f'H, W: {self.H}, {self.W}\n'
