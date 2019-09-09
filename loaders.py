@@ -46,11 +46,11 @@ class Loader:
         return str_
 
 class StarLoader(Loader):
-    def __init__(self, n_basis, n_batch, A=10, sigma=0):
+    def __init__(self, n_basis, n_batch, A=10, **kwargs):
         self.n_basis = n_basis
         self.A = A
         X = self.get_X()
-        super().__init__(X, n_batch, sigma)
+        super().__init__(X, n_batch, **kwargs)
     def get_X(self):
         theta = (th.linspace(0, 2*pi, self.n_basis+1)[:-1])
         cos = th.cos(theta)
@@ -100,5 +100,5 @@ if __name__ == '__main__':
     n_basis = 3
     loader = StarLoader(n_basis, 2)
 
-    for _ in range(10):
+    for _ in range(100):
         print(loader())

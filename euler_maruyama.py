@@ -1,11 +1,14 @@
 import torch as th
 from torch.optim.optimizer import Optimizer, required
-
+from collections import defaultdict 
 
 class EulerMaruyama(Optimizer):
-    def __init__(self,  params, dt=required, tau=1, mu=0, T=0):
+    def __init__(self,  param_groups, dt=1, tau=required, mu=0, T=0):
+        for n, d in enumerate(param_groups):
+            if d['tau'] in [None, 0]:
+                param_groups.pop(n)
         defaults = dict(dt=dt, tau=tau, mu=mu, T=T)
-        super().__init__(params, defaults)
+        super().__init__(param_groups, defaults)
     def step(self, closure):
         # Half-step x if there is mass
         for group in self.param_groups:
@@ -58,20 +61,22 @@ if __name__ == '__main__':
     import numpy as np
 
     x = Parameter(th.tensor(0.))
+    y = Parameter(th.tensor(0.))
     def closure():
-        energy = (x**2)/2
+        energy = (x**2)/2 + (y**2)/2
         energy.backward()
         return energy
 
     param_groups = [
-            {'params': [x], 'tau': 1e1, 'mu': 10, 'T': 1}
+            {'params': [x], 'tau': 1, 'mu': 10, 'T': 1},
             ]
     optimizer = EulerMaruyama(param_groups, dt=1)
     X = []
-    for _ in range(10000):
+    for _ in range(1000):
         optimizer.zero_grad()
         optimizer.step(closure)
         X.append(float(x))
+    print(optimizer.state[x])
 
     plt.subplot(211)
     plt.plot(X)

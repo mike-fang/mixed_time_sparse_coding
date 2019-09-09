@@ -106,7 +106,7 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
         idx0 = max(0, (nf - overlap + 1) * idx_stride)
         idx1 = (nf + 1) * idx_stride 
 
-        T = soln['T'][idx0:idx1]
+        T = soln['t'][idx0:idx1]
         r = soln['r'][idx0:idx1]
         s = soln['s'][idx0:idx1].reshape((-1, n_dict))
 

@@ -7,8 +7,11 @@ IDEAS:
 
 TODO:
 
+V Get trainer to work in torch and restart from saved points
+- Have soln output and be able to piece together solns
+
 - Make variable tau, etc.
-    - Using torch..
+    V Using torch..
         - rewrite loader in torch
     v For each param, define mass, tau as a attribute
 - Output loss, etc.
