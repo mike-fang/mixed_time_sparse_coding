@@ -60,19 +60,23 @@ class StarLoader(Loader):
         return X
 
 class HVLinesLoader:
-    def __init__(self, H, W, n_batch, p=0.1):
+    def __init__(self, H, W, n_batch, p=0.1, positive=False):
         self.H = H
         self.W = W
         self.im_shape = (H, W)
         self.n_batch = n_batch
         self.p = p
+        self.positive = positive
 
         self.set_bases()
     def reset(self):
         pass
     def get_batch(self, reshape=False):
         S = th.Tensor(self.n_batch, self.W + self.H).bernoulli_(self.p)
-        S *= th.Tensor(self.n_batch, self.W + self.H).uniform_()
+        multiplier = th.Tensor(self.n_batch, self.W + self.H).uniform_()
+        if self.positive:
+            multiplier -= 0.5
+        S *= multiplier
         batch = S @ self.bases
 
         if reshape:

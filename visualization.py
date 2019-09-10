@@ -48,7 +48,7 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
     n_row = int(np.ceil(n_row))
 
     # Make subplots
-    fig, axes = plt.subplots(n_row, n_col, figsize=(15, 9))
+    fig, axes = plt.subplots(n_row, n_col)
     img_plot = []
 
     # Populate subplots with img plots
@@ -70,9 +70,10 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
     anim = animation.FuncAnimation(fig, animate, frames=n_frames, interval=100, repeat=True)
     plt.tight_layout()
     if out_file is not None:
+        print(f'Saving animation to {out_file}..')
         anim.save(out_file)
-        #animation.ImageMagickFileWriter()
-    plt.show()
+    else:
+        plt.show()
 
 def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
     X = soln['x']
@@ -130,7 +131,7 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
 
     anim = animation.FuncAnimation(fig, animate, frames=n_frames-1, interval=100, repeat=True)
     if f_out is not None:
-        anim.save(f_out)
+        anim.save(f_out, writer=writer)
     plt.show()
 
 if __name__ == '__main__':

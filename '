@@ -15,7 +15,7 @@ model_params = dict(
         n_dict = H + W,
         n_dim = H * W,
         n_batch = n_batch,
-        positive = False
+        positive = True
         )
 solver_params = [
         dict(params = ['s'], tau=1e2, mu=.1, T=1),
@@ -23,38 +23,31 @@ solver_params = [
         ]
 init = dict(
         l1 = 1,
-        rho = 2,
+        rho = 1,
         nu = 0,
         )
 
-
 tmax = 1e6
 
-for _ in range(100):
-    tau_s = 10 ** np.random.uniform(1, 3)
-    tau_A = 10 ** np.random.uniform(4, 6)
-    mu_s = max(np.random.uniform(-.2, 1), 0)
-    mu_A = max(np.random.uniform(-.2, 1), 0)
-
-    solver_params = [
-            dict(params = ['s'], tau=tau_s, mu=mu_s, T=1),
-            dict(params = ['A'], tau=tau_A, mu=mu_A),
-            ]
-
-
+if True:
     mtsc_solver = MTSCSolver(model_params, solver_params, dir_path='hv_lines', im_shape=(H, W))
     mtsc_solver.model.reset_params(init=init)
     mtsc_solver.set_loader(loader, tau_x=3e3)
-    dir_path = mtsc_solver.dir_path
     soln = mtsc_solver.start_new_soln(tmax=tmax, n_soln=10000, t_save=1e5)
+else:
+    mtsc_solver = MTSCSolver.load('hv_lines')
+    mtsc_solver.im_shape=(H, W)
+    mtsc_solver.set_loader(loader, tau_x=3e3)
+    cp = mtsc_solver.load_checkpoint()
+    #soln = mtsc_solver.load_soln()
+    t = cp['t']
+    soln = mtsc_solver.start_new_soln(tmax=(t + tmax), tstart=t, n_soln=10000)
 
-    plt.plot(soln['energy'])
-    plt.savefig(os.path.join(dir_path, 'energy.pdf'))
 
-    reshaped_params = soln.get_reshaped_params()
-    A = reshaped_params['A']
-    R = reshaped_params['r']
-    X = reshaped_params['x']
-    XRA = np.concatenate((X, R, A), axis=1)
+reshaped_params = soln.get_reshaped_params()
+A = reshaped_params['A']
+R = reshaped_params['r']
+X = reshaped_params['x']
 
-    show_img_evo(XRA, ratio = (H + W)/3, n_frames=100, out_file=os.path.join(dir_path, 'evolution.mp4'))
+XRA = np.concatenate((X, R, A), axis=1)
+show_img_evo(XRA, ratio = (H + W)/3, n_frames=100, out_file=None)

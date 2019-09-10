@@ -59,12 +59,12 @@ class SCModelL0(Module):
         else:
             u = self.s
         return u
+    def recon_error(self, x):
+        return 0.5 *  ((x - self.r)**2).sum()
     @property
     def r(self):
         r = self.A @ self.u
         return r.T
-    def recon_error(self, x):
-        return 0.5 *  ((x - self.r)**2).sum()
     def sparse_loss(self):
         return th.abs(self.s).sum() / self.n_batch
     def energy(self, x):
@@ -129,14 +129,9 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
 
     # Define soln
     soln = defaultdict(list)
-    def save_soln():
-        for n, p in model.named_parameters():
-            soln[n].append(p.clone().data.cpu().numpy())
-        soln['r'].append(model.r.data.numpy())
-        soln['x'].append(x.data.numpy())
-        soln['t'].append(t)
 
     # train model
+    x = loader()
     def closure():
         energy = model(x)
         energy.backward()
@@ -145,9 +140,14 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
         if t % int(tau_x) == 0:
             x = loader()
         solver.zero_grad()
-        solver.step(closure)
+        energy = float(solver.step(closure))
         if t in when_out:
-            save_soln()
+            for n, p in model.named_parameters():
+                soln[n].append(p.clone().data.cpu().numpy())
+            soln['r'].append(model.r.data.numpy())
+            soln['x'].append(x.data.numpy())
+            soln['t'].append(t)
+            soln['energy'].append(energy)
         if (t_save is not None) and (t % t_save == 0):
             save_checkpoint(model, solver, t, out_dir)
 
@@ -233,7 +233,7 @@ if __name__ == '__main__':
             positive = True
             )
     solver_params = [
-            dict(params = ['s'], tau=1e2, T=1),
+            dict(params = ['s'], tau=1e2, T=0),
             dict(params = ['A'], tau=1e5),
             ]
     init = dict(
@@ -243,7 +243,7 @@ if __name__ == '__main__':
     tau_x = int(5e2)
     loader = StarLoader(n_basis=3, n_batch=model_params['n_batch'])
 
-    if False:
+    if True:
         mtsc_solver = MTSCSolver(model_params, solver_params)
         mtsc_solver.model.reset_params(init=init)
         mtsc_solver.set_loader(loader, tau_x)

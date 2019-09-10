@@ -7,6 +7,7 @@ IDEAS:
 
 TODO:
 
+- Make DSC work
 V Get trainer to work in torch and restart from saved points
 - Have soln output and be able to piece together solns
 
