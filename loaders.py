@@ -1,6 +1,7 @@
 import torch as th
 import numpy as np
 from math import pi
+import torch.nn.functional as F
 
 class Loader:
     """
@@ -46,7 +47,7 @@ class Loader:
         str_ += f'X: {self.X}\n'
         return str_
 
-class StarLoader(Loader):
+class StarLoader_(Loader):
     def __init__(self, n_basis, n_batch, A=10, **kwargs):
         self.n_basis = n_basis
         self.A = A
@@ -103,9 +104,52 @@ class HVLinesLoader:
         desc += f'p: {self.p}'
         return desc
 
+class SparseSampler():
+    def __init__(self, A, n_batch, pi=0.2, l1=.2, sigma=0, positive=True):
+        self.A = A
+        self.n_dim, self.n_dict = A.shape
+       
+        self.n_batch = n_batch
+        self.pi = pi
+        self.l1 = l1
+        self.sigma = sigma
+        self.positive = positive
+    def get_coeff(self):
+        s =  th.FloatTensor(self.n_dict, self.n_batch).exponential_(self.l1)
+        if not self.positive:
+            s *= (1 - 2 * th.FloatTensor(*s.shape).bernoulli_(0.5))
+            #s = F.softplus(s)
+        s *= th.FloatTensor(*s.shape).bernoulli_(self.pi)
+
+        return s
+    def get_batch(self, transposed=True):
+        s = self.get_coeff()
+        X = self.A @ s
+        if self.sigma > 0:
+            X += th.FloatTensor(*X.shape).normal_(0, self.sigma)
+        if transposed:
+            return X.T
+        else:
+            return X
+    def __call__(self):
+        return self.get_batch()
+
+class StarLoader(SparseSampler):
+    def __init__(self, n_basis, n_batch, **kwargs):
+        n_dim = 2
+        self.n_basis = n_basis
+        self.n_batch = n_batch
+        A = self.get_dict()
+        super().__init__(A, n_batch, **kwargs)
+    def get_dict(self):
+        theta = (th.linspace(0, 2*pi, self.n_basis+1)[:-1])
+        cos = th.cos(theta)
+        sin = th.sin(theta)
+        return th.cat((cos[None, :], sin[None, :]), dim=0)
+
 if __name__ == '__main__':
     n_basis = 3
-    loader = StarLoader(n_basis, 2)
 
-    for _ in range(100):
-        print(loader())
+
+    loader = StarLoader(n_basis, 3)
+    print(loader())

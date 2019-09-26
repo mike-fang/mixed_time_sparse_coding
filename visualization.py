@@ -98,8 +98,9 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
         A_arrow, = ax.plot([], [], c='g')
         A_arrows.append(A_arrow)
 
-    ax.set_xlim(-15, 15)
-    ax.set_ylim(-15, 15)
+    rng = 5
+    ax.set_xlim(-rng, rng)
+    ax.set_ylim(-rng, rng)
     ax.set_aspect(1)
     fig.legend(loc='lower right')
 

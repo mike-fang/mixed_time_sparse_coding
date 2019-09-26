@@ -91,11 +91,8 @@ class MixedTimeSC(Module):
                     p.temp = self.T[n]
     @property
     def u(self):
-        if True:
-            s0 = -self.l1 * th.log(th.sigmoid(-self.nu))
-            u = F.relu(self.s - s0) - F.relu(-self.s - s0)
-        else:
-            u = self.s
+        s0 = -self.l1 * th.log(th.sigmoid(-self.nu))
+        u = F.relu(self.s - s0) - F.relu(-self.s - s0)
         if self.positive:
             beta = 1
             u = F.softplus(beta * u) 
@@ -225,6 +222,14 @@ if __name__ == '__main__':
     T_STEPS = int(T_RANGE)
     tspan = np.linspace(0, T_RANGE, T_STEPS, endpoint=False)
     loader = StarLoader(n_basis=3, n_batch=n_batch)
+
+    mtsc = MixedTimeSC(n_dim, n_dim, n_batch, tau=tau, mass=mass, T=T, positive=True)
+    mtsc = MixedTimeSC(n_dim, n_dict, n_batch, tau=tau, mass=mass, T=T, positive=True)
+    mtsc.reset_params(init=init)
+    soln_dict = mtsc.train(loader, tspan, None)
+    soln = Solutions(soln_dict)
+    show_2d_evo(soln)
+    assert False
 
     try:
         mtsc = MixedTimeSC.from_json()

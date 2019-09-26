@@ -3,14 +3,14 @@ from torch.optim.optimizer import Optimizer, required
 from collections import defaultdict 
 
 class EulerMaruyama(Optimizer):
-    def __init__(self,  param_groups, dt=1, tau=required, mu=0, T=0, noise_chache=0):
+    def __init__(self,  param_groups, dt=1, tau=required, mu=0, T=0, noise_cache=0):
         for n, d in enumerate(param_groups):
             if d['tau'] in [None, 0]:
                 param_groups.pop(n)
         defaults = dict(dt=dt, tau=tau, mu=mu, T=T)
         super().__init__(param_groups, defaults)
-        self.noise_chache = noise_chache
-        if noise_chache:
+        self.noise_cache = noise_cache
+        if noise_cache:
             self.init_noise()
             self.noise_idx = 0
     def init_noise(self):
@@ -23,11 +23,15 @@ class EulerMaruyama(Optimizer):
             for p in group['params']:
                 param_state = self.state[p]
                 param_state['noise_scale'] = scale
-                param_state['noise'] = th.FloatTensor(self.noise_chache, *p.shape).normal_(0, scale)
-    def reset_noise(self):
+                param_state['noise'] = th.FloatTensor(self.noise_cache, *p.shape).normal_(0, scale)
+    def reset_noise(self, noise_cache=None):
+        self.noise_idx = 0
+        if noise_cache is not None:
+            self.noise_cache = noise_cache
+            self.init_noise()
+            return
         for p, param_state in self.state.items():
             if 'noise_scale' in param_state:
-                self.noise_idx = 0
                 scale = param_state['noise_scale']
                 param_state['noise'].normal_(0, scale)
     def step(self, closure):
@@ -56,10 +60,11 @@ class EulerMaruyama(Optimizer):
 
             for p in group['params']:
                 p_grad = p.grad
-                if self.noise_chache:
-                    eta = self.state[p]['noise'][self.noise_idx]
-                else:
-                    eta = th.FloatTensor(p.shape).normal_()
+                if T > 0:
+                    if self.noise_cache:
+                        eta = self.state[p]['noise'][self.noise_idx]
+                    else:
+                        eta = th.FloatTensor(p.shape).normal_()
 
                 if mu > 0:
                     # Step momentum if there is mass
@@ -78,9 +83,9 @@ class EulerMaruyama(Optimizer):
                     if T > 0:
                         p.data.add_((2 * T * du)**0.5, eta)
 
-        if self.noise_chache:
+        if self.noise_cache:
             self.noise_idx += 1
-            if self.noise_idx >= self.noise_chache:
+            if self.noise_idx >= self.noise_cache:
                 self.reset_noise()
         return energy
 
@@ -90,20 +95,20 @@ if __name__ == '__main__':
     import numpy as np
     from time import time
     steps = 10000
-    noise_chache = 10000
+    noise_cache = 0
 
     x = Parameter(th.tensor(0.))
     y = Parameter(th.tensor(0.))
     def closure():
-        energy = (x**2)/2 + (y**2)/2
+        #energy = ((x**2)/2 + (y**2)/2)*2**0.5
+        energy = x**2/2
         energy.backward()
         return energy
 
     param_groups = [
             {'params': [x], 'tau': 1, 'mu': 10, 'T': 1},
-            {'params': [y], 'tau': 1, 'mu': 10, 'T': 1},
             ]
-    optimizer = EulerMaruyama(param_groups, dt=1, noise_chache=noise_chache)
+    optimizer = EulerMaruyama(param_groups, dt=1, noise_cache=noise_cache)
 
 
     X = []
@@ -118,7 +123,6 @@ if __name__ == '__main__':
 
     plt.subplot(211)
     plt.plot(X)
-    plt.plot(Y)
     plt.subplot(212)
     X_range = np.linspace(-3, 3, 100)
     p = np.exp(-X_range**2/2)
