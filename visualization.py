@@ -98,7 +98,7 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
         A_arrow, = ax.plot([], [], c='g')
         A_arrows.append(A_arrow)
 
-    rng = 5
+    rng = 15
     ax.set_xlim(-rng, rng)
     ax.set_ylim(-rng, rng)
     ax.set_aspect(1)
@@ -132,7 +132,7 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
 
     anim = animation.FuncAnimation(fig, animate, frames=n_frames-1, interval=100, repeat=True)
     if f_out is not None:
-        anim.save(f_out, writer=writer)
+        anim.save(f_out)
     plt.show()
 
 if __name__ == '__main__':

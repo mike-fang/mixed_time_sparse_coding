@@ -238,9 +238,9 @@ class MTSCSolver:
         return soln
 
 if __name__ == '__main__':
-    PI = .2
+    PI = .5
     L1 = 1
-    SIGMA = .2
+    SIGMA = 2
     model_params = dict(
             n_dict = 3,
             n_dim = 2,
@@ -249,12 +249,12 @@ if __name__ == '__main__':
             )
     solver_params = [
             dict(params = ['s'], tau=1e2, T=1),
-            dict(params = ['A'], tau=1e6),
+            dict(params = ['A'], tau=5e4),
             ]
-    t_max = int(1e6)
-    tau_x = int(1e4)
-    loader = StarLoader(n_basis=3, n_batch=model_params['n_batch'], pi=PI, l1=L1, sigma=SIGMA, positive=True)
-    #loader = StarLoader_(n_basis=3, n_batch=model_params['n_batch'])
+    t_max = int(5e4)
+    tau_x = int(1e3)
+    #loader = StarLoader(n_basis=3, n_batch=model_params['n_batch'], pi=PI, l1=L1, sigma=SIGMA/5, positive=True)
+    loader = StarLoader_(n_basis=3, n_batch=model_params['n_batch'], sigma=2)
     print(loader())
     init = dict(
             pi = PI,
@@ -274,4 +274,6 @@ if __name__ == '__main__':
         mtsc_solver.load_checkpoint(chp_name='start')
         mtsc_solver.set_loader(loader, tau_x)
         soln = mtsc_solver.start_new_soln(tmax=t_max, n_soln=10000)
-    show_2d_evo(soln, n_frames=100)
+    f_name = os.path.join(mtsc_solver.dir_path, 'soln.mp4')
+    #f_name = None
+    show_2d_evo(soln, n_frames=100, f_out = f_name)
