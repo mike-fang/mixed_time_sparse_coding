@@ -18,6 +18,72 @@ from solution_saver import Solutions
 
 FILE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+class MTSCModel(Module):
+    def __init__(self, n_dim, n_dict, n_batch, positive=False):
+        super().__init__()
+        self.n_dim = n_dim
+        self.n_dict = n_dict
+        self.n_batch = n_batch
+        self.positive = positive
+
+        self.init_params()
+    def init_params(self, init=[None]):
+        self.A = Parameter(th.Tensor(self.n_dim, self.n_dict))
+        self.s = Parameter(th.Tensor(self.n_dict, self.n_batch))
+        self.x = Parameter(th.Tensor(self.n_dim, self.n_batch))
+        self.tau = Parameter(th.Tensor(1))
+        self.l1 = Parameter(th.Tensor(1))
+        self.rho = Parameter(th.Tensor(1))
+
+        self.reset_params(init=init)
+    def reset_params(self, init=[None]):
+        self.A.data.normal_()
+        self.s.data.normal_()
+        self.x.data.normal_()
+        self.tau.data = th.tensor(1.)
+        self.l1.data = th.tensor(1.)
+        self.rho.data = th.tensor(0.6)
+        if init != [None]:
+            print(init)
+            for n in init:
+                init[n] = th.tensor(init[n], dtype=th.float)
+        for n, p in self.named_parameters():
+            if n in init:
+                p.data = init[n]
+        if 'pi' in init:
+            self.pi = init['pi']
+        if 'sigma' in init:
+            self.tau.data = init['sigma']**(-1)
+    @property
+    def pi(self):
+        return th.sigmoid(self.rho.data)
+    @pi.setter
+    def pi(self, pi):
+        pi = th.tensor(pi, dtype=th.float)
+        self.rho.data = th.log(pi / (1 - pi))
+    @property
+    def s0(self):
+        return F.softplus(-self.rho) / self.l1
+    @property
+    def u(self):
+        if self.positive:
+            u = F.relu(self.s - self.s0) + F.relu(-self.s - self.s0)
+        else:
+            u = F.relu(self.s - self.s0) - F.relu(-self.s - self.s0)
+        return u
+    @property
+    def r(self):
+        r = self.A @ self.u
+        return r.T
+    def recon_error(self):
+        return 0.5 *  ((self.x - self.r)**2).sum()
+    def sparse_loss(self):
+        return th.abs(self.s).sum() / self.n_batch
+    def energy(self):
+        return self.tau * self.recon_error() + self.l1 * self.sparse_loss()
+    def forward(self):
+        return self.energy()
+
 class SCModelL0(Module):
     def __init__(self, n_dim, n_dict, n_batch, positive=False):
         super().__init__()
@@ -112,7 +178,7 @@ def get_model_solver(model_params=None, solver_params=None, path=None, noise_cac
             hp = json.load(f)
         model_params = hp['model_params']
         solver_params = hp['solver_params']
-    model = SCModelL0(**model_params)
+    model = MTSCModel(**model_params)
     param_groups = get_param_groups(solver_params, model)
     solver = EulerMaruyama(param_groups, noise_cache=noise_cache)
     return model, solver
@@ -144,21 +210,21 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
     soln = defaultdict(list)
 
     # train model
-    x = loader()
+    #x = loader()
     def closure():
         energy = model(x)
         energy.backward()
         return energy
     for t in tqdm(range(t_start, tmax + 1)):
         if t % int(tau_x) == 0:
-            x = loader()
+            model.x.data = loader()
         solver.zero_grad()
         energy = float(solver.step(closure))
         if t in when_out:
             for n, p in model.named_parameters():
                 soln[n].append(p.clone().data.cpu().numpy())
             soln['r'].append(model.r.data.numpy())
-            soln['x'].append(x.data.numpy())
+            #soln['x'].append(x.data.numpy())
             soln['t'].append(t)
             soln['energy'].append(energy)
         if (t_save is not None) and (t % t_save == 0):
@@ -250,30 +316,12 @@ if __name__ == '__main__':
     solver_params = [
             dict(params = ['s'], tau=1e2, T=1),
             dict(params = ['A'], tau=5e4),
+            dict(params = ['x'], tau=5e4),
             ]
-    t_max = int(5e4)
+    t_max = int(1e3)
     tau_x = int(1e3)
     #loader = StarLoader(n_basis=3, n_batch=model_params['n_batch'], pi=PI, l1=L1, sigma=SIGMA/5, positive=True)
     loader = StarLoader_(n_basis=3, n_batch=model_params['n_batch'], sigma=2)
-    print(loader())
-    init = dict(
-            pi = PI,
-            l1 = L1,
-            sigma = SIGMA,
-            #A = loader.A
-            )
+    model = MTSCModel(**model_params)
 
-
-    if True:
-        mtsc_solver = MTSCSolver(model_params, solver_params, noise_cache=0)
-        mtsc_solver.model.reset_params(init=init)
-        mtsc_solver.set_loader(loader, tau_x)
-        soln = mtsc_solver.start_new_soln(tmax=t_max, n_soln=10000)
-    else:
-        mtsc_solver = MTSCSolver.load()
-        mtsc_solver.load_checkpoint(chp_name='start')
-        mtsc_solver.set_loader(loader, tau_x)
-        soln = mtsc_solver.start_new_soln(tmax=t_max, n_soln=10000)
-    f_name = os.path.join(mtsc_solver.dir_path, 'soln.mp4')
-    #f_name = None
-    show_2d_evo(soln, n_frames=100, f_out = f_name)
+    model, solver = get_model_solver(model_params, solver_params)

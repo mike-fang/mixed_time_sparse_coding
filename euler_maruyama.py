@@ -66,7 +66,7 @@ class EulerMaruyama(Optimizer):
                     else:
                         eta = th.FloatTensor(p.shape).normal_()
 
-                if mu > 0:
+                if mu != 0:
                     # Step momentum if there is mass
                     pi = self.state[p]['momentum']
                     pi.add_(-du, pi/mu + p_grad)
@@ -81,7 +81,7 @@ class EulerMaruyama(Optimizer):
                     # If no mass, just step x
                     p.data.add_(-du, p_grad)
                     if T > 0:
-                        p.data.add_((2 * T * du)**0.5, eta)
+                        p.data.add_((np.abs(2 * T * du))**0.5, eta)
 
         if self.noise_cache:
             self.noise_idx += 1
@@ -94,40 +94,63 @@ if __name__ == '__main__':
     import matplotlib.pylab as plt
     import numpy as np
     from time import time
-    steps = 10000
+    from tqdm import tqdm
+    steps = 100000
     noise_cache = 0
 
-    x = Parameter(th.tensor(0.))
-    y = Parameter(th.tensor(0.))
+
+    tau_x = -1
+    tau_t = 100
+    tau_mu = 30
+    SIMGA = 1
+    MU0 = 0
+    dt = 1
+    scale = int(100/dt)
+    x = Parameter(th.tensor(1.))
+    x0 = Parameter(th.tensor(0.))
+    t = Parameter(th.tensor(-3.))
+    mu = Parameter(th.tensor(3.))
+    print(th.exp(-t/2))
+    def energy(x, t, mu):
+        return 0.5 * th.exp(t) * (x-mu)**2
+    def next_batch():
+        x0.data.normal_(0, SIMGA)
     def closure():
-        #energy = ((x**2)/2 + (y**2)/2)*2**0.5
-        energy = x**2/2
-        energy.backward()
-        return energy
+        E_eff = 0
+        E_eff += energy(x0, t, mu) 
+        E_eff -= energy(x, t, mu)
+        E_eff.backward()
+        return E_eff
+
 
     param_groups = [
-            {'params': [x], 'tau': 1, 'mu': 10, 'T': 1},
+            {'params': [x], 'tau': tau_x, 'T': 1.000},
+            {'params': [t], 'tau': tau_t, 'mu':.5, 'T': 0},
+            {'params': [mu], 'tau': tau_mu, 'mu':.5, 'T': 0},
             ]
-    optimizer = EulerMaruyama(param_groups, dt=1, noise_cache=noise_cache)
+    solver = EulerMaruyama(param_groups, dt=.01)
 
+    X = np.zeros(steps)
+    X0 = np.zeros(steps)
+    T = np.zeros(steps)
+    MU0 = np.zeros(steps)
+    MU = np.zeros(steps)
+    for n in tqdm(range(steps)):
+        if n % (abs(tau_x)*scale) == 0:
+            next_batch()
+        solver.zero_grad()
+        solver.step(closure)
+        X[n] = float(x)
+        X0[n] = float(x0)
+        T[n] = float(t)
+        MU[n] = float(mu)
 
-    X = []
-    Y = []
-    t0 = time()
-    for _ in range(steps):
-        optimizer.zero_grad()
-        optimizer.step(closure)
-        X.append(float(x))
-        Y.append(float(y))
-    print(time() - t0)
-
-    plt.subplot(211)
-    plt.plot(X)
-    plt.subplot(212)
-    X_range = np.linspace(-3, 3, 100)
-    p = np.exp(-X_range**2/2)
-    p /= p.sum() * (X_range[1] - X_range[0])
-    
-    plt.hist(X, bins=50, density=True)
-    plt.plot(X_range, p)
+    plt.plot(np.ones(steps)*SIMGA, 'b--')
+    plt.plot(-np.ones(steps)*SIMGA, 'b--')
+    plt.plot(X0, 'k', label = 'X ~ data')
+    plt.plot(X[X**2 < 1e5], 'r', label = 'X ~ model')
+    plt.plot(MU + np.exp(-T/2), 'g--', label = 'Scale')
+    plt.plot(MU -np.exp(-T/2), 'g--', label = 'Scale')
+    plt.plot(MU, 'g-', label = 'Mean')
+    plt.legend()
     plt.show()
