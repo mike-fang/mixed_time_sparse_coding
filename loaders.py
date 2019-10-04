@@ -154,5 +154,5 @@ if __name__ == '__main__':
     n_basis = 3
 
 
-    loader = StarLoader(n_basis, 3)
+    loader = StarLoader_(n_basis, 3)
     print(loader())

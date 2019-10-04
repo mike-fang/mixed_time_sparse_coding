@@ -19,6 +19,7 @@ from solution_saver import Solutions
 FILE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 class MTSCModel(Module):
+    # // Init //
     def __init__(self, n_dim, n_dict, n_batch, positive=False):
         super().__init__()
         self.n_dim = n_dim
@@ -29,22 +30,25 @@ class MTSCModel(Module):
         self.init_params()
     def init_params(self, init=[None]):
         self.A = Parameter(th.Tensor(self.n_dim, self.n_dict))
-        self.s = Parameter(th.Tensor(self.n_dict, self.n_batch))
-        self.x = Parameter(th.Tensor(self.n_dim, self.n_batch))
         self.tau = Parameter(th.Tensor(1))
         self.l1 = Parameter(th.Tensor(1))
         self.rho = Parameter(th.Tensor(1))
 
+        self.s_data = Parameter(th.Tensor(self.n_dict, self.n_batch))
+        self.x_model = Parameter(th.Tensor(self.n_batch, self.n_dim))
+        self.s_model = Parameter(th.Tensor(self.n_dict, self.n_batch))
+
         self.reset_params(init=init)
     def reset_params(self, init=[None]):
         self.A.data.normal_()
-        self.s.data.normal_()
-        self.x.data.normal_()
+        self.s_data.data.normal_()
+        self.s_model.data.normal_()
+        self.x_model.data.normal_()
+
         self.tau.data = th.tensor(1.)
         self.l1.data = th.tensor(1.)
         self.rho.data = th.tensor(0.6)
         if init != [None]:
-            print(init)
             for n in init:
                 init[n] = th.tensor(init[n], dtype=th.float)
         for n, p in self.named_parameters():
@@ -54,6 +58,7 @@ class MTSCModel(Module):
             self.pi = init['pi']
         if 'sigma' in init:
             self.tau.data = init['sigma']**(-1)
+    # // Param conversions // 
     @property
     def pi(self):
         return th.sigmoid(self.rho.data)
@@ -64,25 +69,22 @@ class MTSCModel(Module):
     @property
     def s0(self):
         return F.softplus(-self.rho) / self.l1
-    @property
-    def u(self):
+    # // Energy definition //
+    def get_recon(self, s):
         if self.positive:
-            u = F.relu(self.s - self.s0) + F.relu(-self.s - self.s0)
+            u = F.relu(s - self.s0) + F.relu(-s - self.s0)
         else:
-            u = F.relu(self.s - self.s0) - F.relu(-self.s - self.s0)
-        return u
-    @property
-    def r(self):
-        r = self.A @ self.u
-        return r.T
-    def recon_error(self):
-        return 0.5 *  ((self.x - self.r)**2).sum()
-    def sparse_loss(self):
-        return th.abs(self.s).sum() / self.n_batch
-    def energy(self):
-        return self.tau * self.recon_error() + self.l1 * self.sparse_loss()
-    def forward(self):
-        return self.energy()
+            u = F.relu(s - self.s0) - F.relu(-s - self.s0)
+        return self.A @ u
+    def sc_energy(self, s, x):
+        r = self.get_recon(s)
+        recon_loss = 0.5 * ((x.T - r)**2).sum()
+        sparse_loss = th.abs(s).sum() / self.n_batch 
+        return self.tau * recon_loss + self.l1 * sparse_loss
+    def energy(self, x_data):
+        return self.sc_energy(self.s_data, x_data) - self.sc_energy(self.s_model, self.x_model)
+    def forward(self, x):
+        return self.energy(x)
 
 class SCModelL0(Module):
     def __init__(self, n_dim, n_dict, n_batch, positive=False):
@@ -110,7 +112,6 @@ class SCModelL0(Module):
         self.l1.data = th.tensor(1.)
         self.rho.data = th.tensor(0.6)
         if init != [None]:
-            print(init)
             for n in init:
                 init[n] = th.tensor(init[n], dtype=th.float)
         for n, p in self.named_parameters():
@@ -217,14 +218,15 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
         return energy
     for t in tqdm(range(t_start, tmax + 1)):
         if t % int(tau_x) == 0:
-            model.x.data = loader()
+            x = loader()
         solver.zero_grad()
         energy = float(solver.step(closure))
         if t in when_out:
             for n, p in model.named_parameters():
                 soln[n].append(p.clone().data.cpu().numpy())
-            soln['r'].append(model.r.data.numpy())
-            #soln['x'].append(x.data.numpy())
+            soln['r_model'].append(model.get_recon(model.s_model).data.numpy())
+            soln['r_data'].append(model.get_recon(model.s_data).data.numpy())
+            soln['x_data'].append(x.data.numpy())
             soln['t'].append(t)
             soln['energy'].append(energy)
         if (t_save is not None) and (t % t_save == 0):
@@ -307,6 +309,8 @@ if __name__ == '__main__':
     PI = .5
     L1 = 1
     SIGMA = 2
+    tmax = int(1e3)
+    tau_x = int(1e3)
     model_params = dict(
             n_dict = 3,
             n_dim = 2,
@@ -314,14 +318,20 @@ if __name__ == '__main__':
             positive = True
             )
     solver_params = [
-            dict(params = ['s'], tau=1e2, T=1),
+            dict(params = ['s_data'], tau=1e2, T=1),
+            dict(params = ['s_model'], tau=-1e2, T=1),
+            dict(params = ['x_model'], tau=tau_x, T=1),
             dict(params = ['A'], tau=5e4),
-            dict(params = ['x'], tau=5e4),
             ]
-    t_max = int(1e3)
-    tau_x = int(1e3)
-    #loader = StarLoader(n_basis=3, n_batch=model_params['n_batch'], pi=PI, l1=L1, sigma=SIGMA/5, positive=True)
     loader = StarLoader_(n_basis=3, n_batch=model_params['n_batch'], sigma=2)
-    model = MTSCModel(**model_params)
 
-    model, solver = get_model_solver(model_params, solver_params)
+    try:
+        soln =Solutions.load()
+    except:
+        mtsc_solver = MTSCSolver(model_params, solver_params)
+        mtsc_solver.set_loader(loader, tau_x)
+        soln = mtsc_solver.start_new_soln(tmax=tmax, n_soln=1000)
+
+    show_2d_evo(soln)
+            
+

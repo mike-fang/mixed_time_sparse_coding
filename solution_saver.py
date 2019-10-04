@@ -49,15 +49,22 @@ class Solutions:
     def save_soln(self, solns):
         #self.solns = solns
         for key, val in solns.items():
+            print(key, val.shape)
+            print(key, val.dtype)
             self.h5_file.create_dataset(key, data=val)
-        if not 'r' in self.h5_file:
-            S = solns['s']
+        if not 'r_data' in self.h5_file:
+            S = solns['s_data']
             A = solns['A']
             R = np.einsum('ijk,ilk->ijl', S, A)
-            self.h5_file.create_dataset('r', data=R)
+            self.h5_file.create_dataset('r_data', data=R)
+        if not 'r_model' in self.h5_file:
+            S = solns['s_model']
+            A = solns['A']
+            R = np.einsum('ijk,ilk->ijl', S, A)
+            self.h5_file.create_modelset('r_model', data=R)
     def get_shape(self):
         self.n_frame, self.n_dim, self.n_dict = self.h5_file['A'].shape
-        _, self.n_batch, _ = self.h5_file['x'].shape
+        _, self.n_batch, _ = self.h5_file['x_data'].shape
     def get_reshaped_params(self, indices=None):
         try:
             im_shape = self.h5_file['im_shape']
@@ -71,18 +78,24 @@ class Solutions:
 
         if indices is None:
             A = np.transpose(self.h5_file['A'][:], (0, 2, 1))
-            R  = self.h5_file['r'][:]
-            X  = self.h5_file['x'][:]
+            R  = self.h5_file['r_data'][:]
+            X  = self.h5_file['x_data'][:]
+            R_  = self.h5_file['r_model'][:]
+            X_  = self.h5_file['x_model'][:]
         else:
             # Only retrieve needed params
             A = np.transpose(self.h5_file['A'][indices], (0, 2, 1))
-            R  = self.h5_file['r'][indices]
-            X  = self.h5_file['x'][indices]
+            R  = self.h5_file['r_data'][indices]
+            X  = self.h5_file['x_data'][indices]
+            R_  = self.h5_file['r_model'][indices]
+            X_  = self.h5_file['x_model'][indices]
 
         reshaped_params = {}
         reshaped_params['A'] = A.reshape((-1, self.n_dict, H, W))
-        reshaped_params['r'] = R.reshape((-1, self.n_batch, H, W))
-        reshaped_params['x'] = X.reshape((-1, self.n_batch, H, W))
+        reshaped_params['r_data'] = R.reshape((-1, self.n_batch, H, W))
+        reshaped_params['x_data'] = X.reshape((-1, self.n_batch, H, W))
+        reshaped_params['r_model'] = R_.reshape((-1, self.n_batch, H, W))
+        reshaped_params['x_model'] = X_.reshape((-1, self.n_batch, H, W))
         return reshaped_params
     def __getitem__(self, key):
         return self.h5_file[key][:]

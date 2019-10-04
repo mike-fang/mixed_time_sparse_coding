@@ -76,8 +76,8 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
         plt.show()
 
 def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
-    X = soln['x']
-    S = soln['s']
+    X = soln['x_data']
+    S = soln['s_data']
     t_steps, n_batch, n_dim = X.shape
     assert n_dim == 2
     _, n_dict, _ = S.shape
@@ -88,8 +88,10 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
     # Create scatter plots for s and x
     sx, sy = [], []
     xx, xy = [], []
-    scat_s = ax.scatter(sx, sy, s=5, c='b', label=rf'$A \mathbf {{u}}$ : Reconstruction')
-    scat_x = ax.scatter(xx, xy, s=50, c='r', label=rf'$\mathbf {{x}}$ : Data')
+    scat_s_data = ax.scatter(sx, sy, s=5, c='b', label=rf'$A \mathbf {{u}}$ : Data Reconstruction')
+    scat_x_data = ax.scatter(xx, xy, s=50, c='r', label=rf'$\mathbf {{x}}$ : Data')
+    scat_s_model = ax.scatter(sx, sy, s=5, c='g', label=rf'$A \mathbf {{u}}$ : Model Reconstruction')
+    scat_x_model = ax.scatter(xx, xy, s=50, c='k', label=rf'$\mathbf {{x}}$ : Model')
 
     # Create arrows for tracking A
     A_arrow_0, = ax.plot([], [], c='g', label=rf'$A$ : Dictionary bases')
@@ -109,20 +111,25 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
         idx1 = (nf + 1) * idx_stride 
 
         T = soln['t'][idx0:idx1]
-        r = soln['r'][idx0:idx1]
-        s = soln['s'][idx0:idx1].reshape((-1, n_dict))
-
         ti = T[0]
         tf = T[-1] 
-
         A = soln['A'][idx1]
-    
-        scat_s.set_offsets(r.reshape((-1, 2)))
-        scat_s.set_array(np.linspace(0, 1, len(T)))
-        scat_s.cmap = plt.cm.get_cmap('Blues')
+        r_model = soln['r_model'][idx0:idx1]
+        r_data = soln['r_data'][idx0:idx1]
+        x_model = soln['x_model'][idx0:idx1].reshape((-1, n_dim))
+        x_data = soln['x_data'][idx0:idx1].reshape((-1, n_dim))
 
-        x = soln['x'][idx0:idx1].reshape((-1, n_dim))
-        scat_x.set_offsets(x)
+    
+        scat_s_model.set_offsets(r_model.reshape((-1, 2)))
+        scat_s_model.set_array(np.linspace(0, 1, len(T)))
+        scat_s_model.cmap = plt.cm.get_cmap('Blues')
+
+        scat_s_data.set_offsets(r_data.reshape((-1, 2)))
+        scat_s_data.set_array(np.linspace(0, 1, len(T)))
+        scat_s_data.cmap = plt.cm.get_cmap('Greens')
+
+        scat_x_data.set_offsets(x_data)
+        scat_x_model.set_offsets(x_model)
 
         for n in range(n_dict):
             A_arrows[n].set_xdata([0, A[0, n]])

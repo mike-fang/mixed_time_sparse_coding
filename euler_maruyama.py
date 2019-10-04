@@ -1,6 +1,7 @@
 import torch as th
 from torch.optim.optimizer import Optimizer, required
 from collections import defaultdict 
+import numpy as np
 
 class EulerMaruyama(Optimizer):
     def __init__(self,  param_groups, dt=1, tau=required, mu=0, T=0, noise_cache=0):
