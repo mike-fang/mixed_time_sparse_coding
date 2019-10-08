@@ -96,7 +96,7 @@ if __name__ == '__main__':
     import numpy as np
     from time import time
     from tqdm import tqdm
-    steps = 100000
+    steps = 300000
     noise_cache = 0
 
 

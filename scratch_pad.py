@@ -1,12 +1,6 @@
-import torch as th
+import numpy as np
 
-
-X = th.tensor(-10.)
-def softplus(x):
-    return th.nn.functional.softplus(x)
-def inv_sp(x):
-    return th.log(th.exp(x) - 1)
-
-u = th.nn.functional.softplus(X)
-print(u)
-print(inv_sp(u))
+N = 3
+A = np.arange(6*3).reshape((N, 2, 3))
+print(A)
+print(A.reshape((-1, 2)))

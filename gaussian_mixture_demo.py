@@ -53,7 +53,6 @@ def E_cauchy(x):
     except:
         return np.log(1 + (x/GAMMA)**2)
 
-
 try:
     X = np.load(f'./{MODEL}_{NAME}.npy')
     X0 = np.load(f'./{MODEL}_{NAME}_X0.npy')

@@ -88,9 +88,9 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
     # Create scatter plots for s and x
     sx, sy = [], []
     xx, xy = [], []
-    scat_s_data = ax.scatter(sx, sy, s=5, c='b', label=rf'$A \mathbf {{u}}$ : Data Reconstruction')
+    scat_r_data = ax.scatter(sx, sy, s=5, c='b', label=rf'$A \mathbf {{u}}$ : Data Reconstruction')
     scat_x_data = ax.scatter(xx, xy, s=50, c='r', label=rf'$\mathbf {{x}}$ : Data')
-    scat_s_model = ax.scatter(sx, sy, s=5, c='g', label=rf'$A \mathbf {{u}}$ : Model Reconstruction')
+    scat_r_model = ax.scatter(sx, sy, s=5, c='orange', label=rf'$A \mathbf {{u}}$ : Model Reconstruction')
     scat_x_model = ax.scatter(xx, xy, s=50, c='k', label=rf'$\mathbf {{x}}$ : Model')
 
     # Create arrows for tracking A
@@ -120,13 +120,13 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None):
         x_data = soln['x_data'][idx0:idx1].reshape((-1, n_dim))
 
     
-        scat_s_model.set_offsets(r_model.reshape((-1, 2)))
-        scat_s_model.set_array(np.linspace(0, 1, len(T)))
-        scat_s_model.cmap = plt.cm.get_cmap('Blues')
+        scat_r_model.set_offsets(r_model.reshape((-1, 2)))
+        scat_r_model.set_array(np.linspace(0, 1, len(T)))
+        scat_r_model.cmap = plt.cm.get_cmap('Blues')
 
-        scat_s_data.set_offsets(r_data.reshape((-1, 2)))
-        scat_s_data.set_array(np.linspace(0, 1, len(T)))
-        scat_s_data.cmap = plt.cm.get_cmap('Greens')
+        scat_r_data.set_offsets(r_data.reshape((-1, 2)))
+        scat_r_data.set_array(np.linspace(0, 1, len(T)))
+        scat_r_data.cmap = plt.cm.get_cmap('Oranges')
 
         scat_x_data.set_offsets(x_data)
         scat_x_model.set_offsets(x_model)

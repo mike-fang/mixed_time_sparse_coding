@@ -75,10 +75,11 @@ class MTSCModel(Module):
             u = F.relu(s - self.s0) + F.relu(-s - self.s0)
         else:
             u = F.relu(s - self.s0) - F.relu(-s - self.s0)
-        return self.A @ u
+        u = s
+        return (self.A @ u).T
     def sc_energy(self, s, x):
         r = self.get_recon(s)
-        recon_loss = 0.5 * ((x.T - r)**2).sum()
+        recon_loss = 0.5 * ((x - r)**2).sum()
         sparse_loss = th.abs(s).sum() / self.n_batch 
         return self.tau * recon_loss + self.l1 * sparse_loss
     def energy(self, x_data):
@@ -306,9 +307,10 @@ class MTSCSolver:
         return soln
 
 if __name__ == '__main__':
-    PI = .5
+    PI = .2
     L1 = 1
-    SIGMA = 2
+    SIGMA = .5
+    new = True
     tmax = int(1e3)
     tau_x = int(1e3)
     model_params = dict(
@@ -324,11 +326,19 @@ if __name__ == '__main__':
             dict(params = ['A'], tau=5e4),
             ]
     loader = StarLoader_(n_basis=3, n_batch=model_params['n_batch'], sigma=2)
+    init = dict(
+            pi = .2,
+            l1 = 1,
+            sigma = .5,
+            )
 
     try:
+        if new:
+            assert False
         soln =Solutions.load()
     except:
         mtsc_solver = MTSCSolver(model_params, solver_params)
+        mtsc_solver.model.reset_params(init=init)
         mtsc_solver.set_loader(loader, tau_x)
         soln = mtsc_solver.start_new_soln(tmax=tmax, n_soln=1000)
 
