@@ -7,19 +7,18 @@ import matplotlib.pylab as plt
 import numpy as np
 from tqdm import tqdm
 
-steps = 1000
-noise_cache = 0
+steps = 10000
 
 tau_x = -1
-tau_t = 100
-tau_mu = 30
+tau_t = 10
+tau_mu = 3
 SIMGA = 1
 MU0 = 0
 dt = 1
-scale = int(100/dt)
+scale = int(10/dt)
 x = Parameter(th.tensor(1.))
 x0 = Parameter(th.tensor(0.))
-t = Parameter(th.tensor(-3.))
+t = Parameter(th.tensor(3.))
 mu = Parameter(th.tensor(3.))
 print(th.exp(-t/2))
 def energy(x, t, mu):
@@ -63,14 +62,14 @@ nf = 3
 N = nf * N_SKIP
 N0 = max(0, (nf-5) * N_SKIP)
 
-fig, axes = plt.subplots(nrows=2)
+fig, ax = plt.subplots()
 
-axes[0].plot(np.ones(steps)[N0:N]*SIMGA, 'b--')
-axes[0].plot(-np.ones(steps)[N0:N]*SIMGA, 'b--')
-axes[0].plot(X0[N0:N], 'k', label = 'X ~ data')
-axes[0].plot(X[N0:N], 'r', label = 'X ~ model')
-axes[0].plot(MU[N0:N] + np.exp(-T[N0:N]/2), 'g--', label = 'Scale')
-axes[0].plot(MU[N0:N] -np.exp(-T[N0:N]/2), 'g--', label = 'Scale')
-axes[0].plot(MU[N0:N], 'g-', label = 'Mean')
+ax.plot(np.ones(steps)[N0:N]*SIMGA, 'b--')
+ax.plot(-np.ones(steps)[N0:N]*SIMGA, 'b--')
+ax.plot(X0[N0:N], 'k', label = 'X ~ data')
+ax.plot(X[N0:N], 'r', label = 'X ~ model')
+ax.plot(MU[N0:N] + np.exp(-T[N0:N]/2), 'g--')
+ax.plot(MU[N0:N] -np.exp(-T[N0:N]/2), 'g--', label = 'Scale')
+ax.plot(MU[N0:N], 'g-', label = 'Mean')
 plt.legend()
 plt.show()

@@ -75,7 +75,6 @@ class MTSCModel(Module):
             u = F.relu(s - self.s0) + F.relu(-s - self.s0)
         else:
             u = F.relu(s - self.s0) - F.relu(-s - self.s0)
-        u = s
         return (self.A @ u).T
     def sc_energy(self, s, x):
         r = self.get_recon(s)
@@ -83,11 +82,11 @@ class MTSCModel(Module):
         sparse_loss = th.abs(s).sum() / self.n_batch 
         return self.tau * recon_loss + self.l1 * sparse_loss
     def energy(self, x_data):
-        return self.sc_energy(self.s_data, x_data) - self.sc_energy(self.s_model, self.x_model)
+        return self.sc_energy(self.s_data, x_data) - 0*self.sc_energy(self.s_model, self.x_model)
     def forward(self, x):
         return self.energy(x)
 
-class SCModelL0(Module):
+class MTSCModel_NoModel(Module):
     def __init__(self, n_dim, n_dict, n_batch, positive=False):
         super().__init__()
         self.n_dim = n_dim
@@ -174,13 +173,13 @@ def get_param_groups(solver_params, model):
         pg['params'] = params
         param_groups.append(pg)
     return param_groups
-def get_model_solver(model_params=None, solver_params=None, path=None, noise_cache=0):
+def get_model_solver(model_params=None, solver_params=None, path=None, noise_cache=0, model_class=MTSCModel):
     if path is not None:
         with open(os.path.join(path), 'r') as f:
             hp = json.load(f)
         model_params = hp['model_params']
         solver_params = hp['solver_params']
-    model = MTSCModel(**model_params)
+    model = model_class(**model_params)
     param_groups = get_param_groups(solver_params, model)
     solver = EulerMaruyama(param_groups, noise_cache=noise_cache)
     return model, solver
@@ -196,7 +195,7 @@ def save_checkpoint(model, solver, t, out_dir, f_name=None):
     th.save(checkpoint, out_path)
     print(f'Checkpoint saved to {out_path}')
     return checkpoint
-def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_dir=None, t_save=None):
+def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_dir=None, t_save=None, normalize_A=True):
     tmax = int(tmax)
     tau_x = int(tau_x)
     t_start = int(t_start)
@@ -222,6 +221,8 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
             x = loader()
         solver.zero_grad()
         energy = float(solver.step(closure))
+        if normalize_A:
+            model.A.data = model.A / model.A.norm(dim=0)
         if t in when_out:
             for n, p in model.named_parameters():
                 soln[n].append(p.clone().data.cpu().numpy())
@@ -307,12 +308,14 @@ class MTSCSolver:
         return soln
 
 if __name__ == '__main__':
-    PI = .2
-    L1 = 1
-    SIGMA = .5
+    PI = .1
+    L1 = 0.5
+    SIGMA = 0
     new = True
-    tmax = int(1e3)
+    tmax = int(2e5)
     tau_x = int(1e3)
+    tau_s = int(1e2)
+    tau_A = 5e4
     model_params = dict(
             n_dict = 3,
             n_dim = 2,
@@ -320,18 +323,17 @@ if __name__ == '__main__':
             positive = True
             )
     solver_params = [
-            dict(params = ['s_data'], tau=1e2, T=1),
-            dict(params = ['s_model'], tau=-1e2, T=1),
-            dict(params = ['x_model'], tau=tau_x, T=1),
-            dict(params = ['A'], tau=5e4),
+            dict(params = ['s_data'], tau=tau_s, T=1),
+            #dict(params = ['s_model'], tau=-tau_s/5, T=0),
+            #dict(params = ['x_model'], tau=-tau_x/5, T=1),
+            dict(params = ['A'], tau=tau_A),
             ]
-    loader = StarLoader_(n_basis=3, n_batch=model_params['n_batch'], sigma=2)
+    loader = StarLoader(n_basis=3, n_batch=model_params['n_batch'], sigma=SIGMA, pi=PI, l1=L1)
     init = dict(
             pi = .2,
             l1 = 1,
-            sigma = .5,
+            sigma = 1,
             )
-
     try:
         if new:
             assert False
@@ -343,5 +345,3 @@ if __name__ == '__main__':
         soln = mtsc_solver.start_new_soln(tmax=tmax, n_soln=1000)
 
     show_2d_evo(soln)
-            
-

@@ -10,7 +10,7 @@ from tqdm import tqdm
 steps = 10000
 R = 2
 
-x = Parameter(th.tensor(0.))
+y = Parameter(th.tensor(0.))
 t = Parameter(th.tensor(1.))
 
 param_groups = [

@@ -117,13 +117,7 @@ class SparseSampler():
         s =  th.FloatTensor(self.n_dict, self.n_batch).exponential_(self.l1)
         if not self.positive:
             s *= (1 - 2 * th.FloatTensor(*s.shape).bernoulli_(0.5))
-        else:
-            s *= (1 - 2 * th.FloatTensor(*s.shape).bernoulli_(0.5))
-            s = F.softplus(s)
-            s += 1.5
         s *= th.FloatTensor(*s.shape).bernoulli_(self.pi)
-       # s = F.softplus(s)
-
         return s
     def get_batch(self, transposed=True):
         s = self.get_coeff()
@@ -153,6 +147,3 @@ class StarLoader(SparseSampler):
 if __name__ == '__main__':
     n_basis = 3
 
-
-    loader = StarLoader_(n_basis, 3)
-    print(loader())
