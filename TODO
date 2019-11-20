@@ -4,8 +4,14 @@ PROBLEMS:
 IDEAS:
 * Parallel sampling?
     Should be fine, take s to {s1, s2, .., sN}, N being the batch size
+    V Implemented
+
 
 TODO:
+- Precondition s, at least when simulating the physical system.
+- Convegence Experiments:
+    1. Look at time for convergence for various Gaussian distr.s
+    2. Look at effects of stepsizes
 
 - Make DSC work
 V Get trainer to work in torch and restart from saved points

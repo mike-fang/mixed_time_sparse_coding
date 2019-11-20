@@ -15,6 +15,9 @@ import json
 import os.path
 from glob import glob
 from solution_saver import Solutions
+import sys
+import traceback
+
 
 FILE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -80,7 +83,7 @@ class MTSCModel(Module):
         r = self.get_recon(s)
         recon_loss = 0.5 * ((x - r)**2).sum()
         sparse_loss = th.abs(s).sum() / self.n_batch 
-        return self.tau * recon_loss + self.l1 * sparse_loss
+        return (self.tau * recon_loss + self.l1 * sparse_loss) / self.n_batch
     def energy(self, x_data):
         return self.sc_energy(self.s_data, x_data) - 0*self.sc_energy(self.s_model, self.x_model)
     def forward(self, x):
@@ -223,6 +226,8 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
         energy = float(solver.step(closure))
         if normalize_A:
             model.A.data = model.A / model.A.norm(dim=0)
+            #A = model.A.data.numpy()
+            #_, S, _ = np.linalg.svd(A)
         if t in when_out:
             for n, p in model.named_parameters():
                 soln[n].append(p.clone().data.cpu().numpy())
@@ -308,18 +313,20 @@ class MTSCSolver:
         return soln
 
 if __name__ == '__main__':
-    PI = .1
-    L1 = 0.5
+    PI = .8
+    L1 = 1
     SIGMA = 0
+    N_BATCH = 3
     new = True
-    tmax = int(2e5)
+    tmax = int(1e3)
     tau_x = int(1e3)
-    tau_s = int(1e2)
-    tau_A = 5e4
+    tau_s = int(1e3)
+    tau_A = 5e5
+    loader = StarLoader(n_basis=3, n_batch=N_BATCH, sigma=SIGMA, pi=PI, l1=L1)
     model_params = dict(
             n_dict = 3,
             n_dim = 2,
-            n_batch = 3,
+            n_batch = N_BATCH,
             positive = True
             )
     solver_params = [
@@ -328,16 +335,15 @@ if __name__ == '__main__':
             #dict(params = ['x_model'], tau=-tau_x/5, T=1),
             dict(params = ['A'], tau=tau_A),
             ]
-    loader = StarLoader(n_basis=3, n_batch=model_params['n_batch'], sigma=SIGMA, pi=PI, l1=L1)
     init = dict(
-            pi = .2,
-            l1 = 1,
+            pi = PI,
+            l1 = L1,
             sigma = 1,
             )
     try:
         if new:
             assert False
-        soln =Solutions.load()
+        soln = Solutions.load()
     except:
         mtsc_solver = MTSCSolver(model_params, solver_params)
         mtsc_solver.model.reset_params(init=init)

@@ -4,11 +4,11 @@ from collections import defaultdict
 import numpy as np
 
 class EulerMaruyama(Optimizer):
-    def __init__(self,  param_groups, dt=1, tau=required, mu=0, T=0, noise_cache=0):
+    def __init__(self,  param_groups, dt=1, tau=required, mu=0, T=0, coupling=1, noise_cache=0):
         for n, d in enumerate(param_groups):
             if d['tau'] in [None, 0]:
                 param_groups.pop(n)
-        defaults = dict(dt=dt, tau=tau, mu=mu, T=T)
+        defaults = dict(dt=dt, tau=tau, mu=mu, coupling=coupling, T=T)
         super().__init__(param_groups, defaults)
         self.noise_cache = noise_cache
         if noise_cache:
@@ -57,7 +57,9 @@ class EulerMaruyama(Optimizer):
             mu = group['mu']
             tau = group['tau']
             T = group['T']
-            du =  group['dt'] / tau
+            du =  group['coupling'] * group['dt'] / tau
+            if du == 0:
+                continue
 
             for p in group['params']:
                 p_grad = p.grad
@@ -122,7 +124,6 @@ if __name__ == '__main__':
         E_eff -= energy(x, t, mu)
         E_eff.backward()
         return E_eff
-
 
     param_groups = [
             {'params': [x], 'tau': tau_x, 'T': 1.000},

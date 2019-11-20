@@ -49,8 +49,6 @@ class Solutions:
     def save_soln(self, solns):
         #self.solns = solns
         for key, val in solns.items():
-            print(key, val.shape)
-            print(key, val.dtype)
             self.h5_file.create_dataset(key, data=val)
         if not 'r_data' in self.h5_file:
             S = solns['s_data']

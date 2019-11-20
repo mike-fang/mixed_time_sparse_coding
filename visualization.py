@@ -2,7 +2,7 @@ import matplotlib.pylab as plt
 import numpy as np
 from matplotlib import animation
 import h5py
-from helpers import Solutions_H5
+#from helpers import Solutions_H5
 
 def get_grid_axes(n_axes, ratio=1.5):
     # Get n_rows / n_cols

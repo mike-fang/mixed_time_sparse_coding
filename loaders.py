@@ -2,6 +2,7 @@ import torch as th
 import numpy as np
 from math import pi
 import torch.nn.functional as F
+import matplotlib.pylab as plt
 
 class Loader:
     """
@@ -37,7 +38,7 @@ class Loader:
         if self.sigma > 0:
             #batch += np.random.normal(0, self.sigma, size=batch.shape)
             batch += th.FloatTensor(*batch.shape).normal_(0, self.sigma)
-        return batch
+        return batch.T
     def __call__(self):
         return self.get_batch()
     def __repr__(self):
@@ -114,7 +115,7 @@ class SparseSampler():
         self.sigma = sigma
         self.positive = positive
     def get_coeff(self):
-        s =  th.FloatTensor(self.n_dict, self.n_batch).exponential_(self.l1)
+        s = th.FloatTensor(self.n_dict, self.n_batch).exponential_(self.l1)
         if not self.positive:
             s *= (1 - 2 * th.FloatTensor(*s.shape).bernoulli_(0.5))
         s *= th.FloatTensor(*s.shape).bernoulli_(self.pi)
@@ -128,8 +129,8 @@ class SparseSampler():
             return X.T
         else:
             return X
-    def __call__(self):
-        return self.get_batch()
+    def __call__(self, transposed=True):
+        return self.get_batch(transposed)
 
 class StarLoader(SparseSampler):
     def __init__(self, n_basis, n_batch, **kwargs):
@@ -145,5 +146,24 @@ class StarLoader(SparseSampler):
         return th.cat((cos[None, :], sin[None, :]), dim=0)
 
 if __name__ == '__main__':
-    n_basis = 3
 
+    PI = .5
+    L1 = 10
+    SIGMA = .001
+    N_BATCH = 1000
+
+    fig, axes = plt.subplots(ncols=2, nrows=2)
+    axes_ = []
+    for row in axes:
+        axes_.extend(row)
+
+    axes = axes_
+
+    for ax, L1 in zip(axes, [1, 10, 100, 1000]):
+        loader = StarLoader(n_basis=3, n_batch=N_BATCH, sigma=SIGMA, pi=PI, l1=L1)
+        points = loader().numpy()
+        ax.scatter(*points.T, c='k', alpha=0.1)
+        ax.set_aspect(1.)
+        ax.set_xlim(-.5/L1, .5/L1)
+        ax.set_ylim(-.5/L1, .5/L1)
+    plt.show()
