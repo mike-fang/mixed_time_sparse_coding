@@ -38,7 +38,7 @@ class Loader:
         if self.sigma > 0:
             #batch += np.random.normal(0, self.sigma, size=batch.shape)
             batch += th.FloatTensor(*batch.shape).normal_(0, self.sigma)
-        return batch.T
+        return batch
     def __call__(self):
         return self.get_batch()
     def __repr__(self):
@@ -105,7 +105,7 @@ class HVLinesLoader:
         return desc
 
 class SparseSampler():
-    def __init__(self, A, n_batch, pi=0.2, l1=.2, sigma=0, positive=True):
+    def __init__(self, A, n_batch, pi=0.2, l1=.2, sigma=0, positive=True, coeff='exp'):
         self.A = A
         self.n_dim, self.n_dict = A.shape
        
@@ -114,11 +114,21 @@ class SparseSampler():
         self.l1 = l1
         self.sigma = sigma
         self.positive = positive
+        self.coeff = coeff
     def get_coeff(self):
-        s = th.FloatTensor(self.n_dict, self.n_batch).exponential_(self.l1)
-        if not self.positive:
-            s *= (1 - 2 * th.FloatTensor(*s.shape).bernoulli_(0.5))
-        s *= th.FloatTensor(*s.shape).bernoulli_(self.pi)
+        if self.coeff == 'exp':
+            s = th.FloatTensor(self.n_dict, self.n_batch).exponential_(self.l1)
+            if not self.positive:
+                s *= (1 - 2 * th.FloatTensor(*s.shape).bernoulli_(0.5))
+            s *= th.FloatTensor(*s.shape).bernoulli_(self.pi)
+        elif self.coeff == 'fixed':
+            s = th.zeros(self.n_dict, self.n_batch)
+            rand_idx = np.random.randint(self.n_dict, size=self.n_batch)
+            for n in range(self.n_batch):
+                s[rand_idx[n], n] = self.l1**(-1)
+        else:
+            print(self.coeff)
+            raise Exception(f'Unknown coefficent sampling type')
         return s
     def get_batch(self, transposed=True):
         s = self.get_coeff()

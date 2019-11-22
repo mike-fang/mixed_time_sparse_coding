@@ -1,11 +1,4 @@
 import numpy as np
-from numpy.linalg import svd
+import torch as th
 
-A = np.array([
-        [1, 1],
-        [0, 0]
-        ]
-        )
-
-_, S, _ = (svd(A))
-print(S)
+print( (5 > 3) * 1. )

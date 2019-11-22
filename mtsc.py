@@ -82,10 +82,10 @@ class MTSCModel(Module):
     def sc_energy(self, s, x):
         r = self.get_recon(s)
         recon_loss = 0.5 * ((x - r)**2).sum()
-        sparse_loss = th.abs(s).sum() / self.n_batch 
-        return (self.tau * recon_loss + self.l1 * sparse_loss) / self.n_batch
+        sparse_loss = th.abs(s).sum() 
+        return (self.tau * recon_loss + self.l1 * sparse_loss) 
     def energy(self, x_data):
-        return self.sc_energy(self.s_data, x_data) - 0*self.sc_energy(self.s_model, self.x_model)
+        return self.sc_energy(self.s_data, x_data)# - 0*self.sc_energy(self.s_model, self.x_model)
     def forward(self, x):
         return self.energy(x)
 
@@ -155,7 +155,9 @@ class MTSCModel_NoModel(Module):
         return self.energy(x)
 
 # Misc Fns
-def get_timestamped_dir(load=False, base_dir='tmp'):
+def get_timestamped_dir(load=False, base_dir=None):
+    if base_dir is None:
+        base_dir = 'tmp'
     if load:
         tmp_files = glob(os.path.join(FILE_DIR, 'results', base_dir, '*'))
         tmp_files.sort()
@@ -198,7 +200,7 @@ def save_checkpoint(model, solver, t, out_dir, f_name=None):
     th.save(checkpoint, out_path)
     print(f'Checkpoint saved to {out_path}')
     return checkpoint
-def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_dir=None, t_save=None, normalize_A=True):
+def train_dsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_dir=None, t_save=None, normalize_A=True, alpha=None):
     tmax = int(tmax)
     tau_x = int(tau_x)
     t_start = int(t_start)
@@ -219,9 +221,106 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
         energy = model(x)
         energy.backward()
         return energy
+
+    for p in solver.param_groups:
+        try:
+            if model.A in p['params']:
+                A_group = p
+        except:
+            pass
+        try:
+            if model.s_data in p['params']:
+                s_group = p
+        except:
+            pass
     for t in tqdm(range(t_start, tmax + 1)):
         if t % int(tau_x) == 0:
             x = loader()
+            A_group['coupling'] = 1
+            s_group['coupling'] = 0
+        else:
+            A_group['coupling'] = 0
+            s_group['coupling'] = 1
+        solver.zero_grad()
+        energy = float(solver.step(closure))
+        if normalize_A:
+            model.A.data = model.A / model.A.norm(dim=0)
+            #A = model.A.data.numpy()
+            #_, S, _ = np.linalg.svd(A)
+        if t in when_out:
+            for n, p in model.named_parameters():
+                soln[n].append(p.clone().data.cpu().numpy())
+            soln['r_model'].append(model.get_recon(model.s_model).data.numpy())
+            soln['r_data'].append(model.get_recon(model.s_data).data.numpy())
+            soln['x_data'].append(x.data.numpy())
+            soln['t'].append(t)
+            soln['energy'].append(energy)
+        if (t_save is not None) and (t % t_save == 0):
+            save_checkpoint(model, solver, t, out_dir)
+
+    for k, v in soln.items():
+        soln[k] = np.array(v)
+    return soln
+def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_dir=None, t_save=None, normalize_A=True, coupling='const', coupling_scale='tmax', alpha=None):
+    if callable(coupling):
+        # Already given a function
+        pass
+    elif coupling in ['const', None]:
+        alpha = None
+    elif coupling == 'exp':
+        def coupling(t_):
+            return (1 - np.exp(-t_ / alpha))
+    elif coupling == 'exp_decay':
+        def coupling(t_):
+            return np.exp(-t_ / alpha)
+    elif coupling == 'exp_':
+        def coupling(t_):
+            return np.exp(t_/alpha) / (alpha * (np.exp(1 / alpha) - 1))
+    elif coupling == 'step':
+        def coupling(t_):
+            return (t_ > alpha) * 1.
+    else:
+        raise Exception('Invalid coupling type')
+
+    if coupling_scale == 'tmax':
+        coupling_scale = tmax
+    elif coupling_scale in ['x', 'tau_x']:
+        coupling_scale = tau_x
+
+    tmax = int(tmax)
+    tau_x = int(tau_x)
+    t_start = int(t_start)
+    if (n_soln is None) or (n_soln > tmax):
+        n_soln = tmax
+    when_out = np.linspace(t_start, tmax+1, num=n_soln+1, dtype=int)[:-1]
+    
+    # If t_save not specified, save only begining and end
+    if (out_dir is not None) and (t_save is None):
+        t_save = tmax
+
+    # Define soln
+    soln = defaultdict(list)
+
+    # train model
+    #x = loader()
+    def closure():
+        energy = model(x)
+        energy.backward()
+        return energy
+
+    for p in solver.param_groups:
+        try:
+            if model.A in p['params']:
+                A_group = p
+        except:
+            pass
+    for t in tqdm(range(t_start, tmax + 1)):
+        if t % int(tau_x) == 0:
+            x = loader()
+        if alpha is not None:
+            t_ = (t % coupling_scale) / coupling_scale * alpha
+            A_group['coupling'] = coupling(t_)
+
         solver.zero_grad()
         energy = float(solver.step(closure))
         if normalize_A:
@@ -255,28 +354,33 @@ class MTSCSolver:
         model_params = hp['model_params']
         solver_params = hp['solver_params']
         return cls(model_params, solver_params, dir_path)
-    def __init__(self, model_params, solver_params, dir_path=None, im_shape=None, noise_cache=0):
-        self.model_params = model_params
-        self.solver_params = solver_params
-        if dir_path is None:
-            dir_path = get_timestamped_dir()
-        elif not os.path.isdir(dir_path):
-            dir_path = get_timestamped_dir(base_dir=dir_path)
-        print(f'Saving experiment to directory {dir_path}')
-        self.dir_path = dir_path
+    def __init__(self, model_params, solver_params, base_dir=None, im_shape=None, noise_cache=0, trainer=train_mtsc, alpha=None, coupling='const'):
+        self.set_model_solver(model_params, solver_params)
+        self.base_dir = base_dir
         self.im_shape = im_shape
+        self.alpha = alpha
+        self.trainer = trainer
+        self.coupling = coupling
 
-        self.save_hyperparams()
-        self.set_model_solver()
         if noise_cache > 0:
             self.solver.reset_noise(noise_cache=noise_cache)
     @property
     def hyperparams(self):
-        return dict(model_params=self.model_params, solver_params=self.solver_params)
+        try:
+            tau_x = self.tau_x
+        except:
+            tau_x = 'none'
+        try:
+            tmax = self.tmax
+        except:
+            tmax = 'none'
+        return dict(tmax=tmax, tau_x = tau_x, model_params=self.model_params, solver_params=self.solver_params)
     def save_hyperparams(self):
         with open(os.path.join(self.dir_path, 'hyperparams.json'), 'w') as f:
             json.dump(self.hyperparams, f)
-    def set_model_solver(self):
+    def set_model_solver(self, model_params, solver_params):
+        self.model_params = model_params
+        self.solver_params = solver_params
         self.model, self.solver = get_model_solver(self.model_params, self.solver_params)
     def set_loader(self, loader, tau_x):
         self.loader = loader
@@ -295,7 +399,11 @@ class MTSCSolver:
         return checkpoint
     def start_new_soln(self, tmax, tstart=0, n_soln=None, t_save=None, soln_name=None):
         if soln_name is None:
+            self.dir_path = get_timestamped_dir(base_dir=self.base_dir)
+            print(f'Saving experiment to directory {self.dir_path}')
             name = os.path.join(self.dir_path, 'soln.h5')
+            self.tmax = tmax
+            self.save_hyperparams()
             if os.path.isfile(name):
                 for n in range(100):
                     soln_name = os.path.join(self.dir_path, f'soln_{n}.h5')
@@ -303,7 +411,7 @@ class MTSCSolver:
                         break
             else:
                 soln_name = name
-        soln_dict = train_mtsc(tmax=tmax, t_start=tstart, loader=self.loader, tau_x=self.tau_x, model=self.model, solver=self.solver, n_soln=n_soln, out_dir=self.dir_path, t_save=t_save)
+        soln_dict = self.trainer(tmax=tmax, t_start=tstart, loader=self.loader, tau_x=self.tau_x, model=self.model, solver=self.solver, n_soln=n_soln, out_dir=self.dir_path, t_save=t_save, alpha=self.alpha, coupling=self.coupling)
         soln = Solutions(soln_dict, f_name=soln_name, im_shape=self.im_shape)
         return soln
     def load_soln(self, f_name=None):
@@ -311,18 +419,38 @@ class MTSCSolver:
             f_name = os.path.join(self.dir_path, 'soln.h5')
         soln = Solutions.load(f_name)
         return soln
+    def load(self, path=None):
+        if path is None:
+            dir_path = get_timestamped_dir(load=True, base_dir=self.base_dir)
+        else:
+            dir_path = os.path.join('./results', self.base_dir, path)
+
+        with open(os.path.join(dir_path, 'hyperparams.json'), 'r') as f:
+            hp = json.load(f)
+        model_params = hp['model_params']
+        solver_params = hp['solver_params']
+        self.set_model_solver(model_params, solver_params)
+        self.dir_path = dir_path
+        return Solutions.load(os.path.join(self.dir_path, 'soln.h5'))
+        #return cls(model_params, solver_params, dir_path)
+
+class DSCSolver(MTSCSolver):
+    def __init__(self, model_params, solver_params, **kwargs):
+        super().__init__(model_params, solver_params, **kwargs, trainer=train_dsc)
+        print(self.trainer)
 
 if __name__ == '__main__':
-    PI = .8
+    PI = .5
     L1 = 1
     SIGMA = 0
-    N_BATCH = 3
+    N_BATCH = 15
     new = True
-    tmax = int(1e3)
+    tmax = int(1e4)
     tau_x = int(1e3)
-    tau_s = int(1e3)
-    tau_A = 5e5
-    loader = StarLoader(n_basis=3, n_batch=N_BATCH, sigma=SIGMA, pi=PI, l1=L1)
+    tau_s = int(1e2)
+    tau_A = 1e4
+    loader = StarLoader(n_basis=3, n_batch=N_BATCH, sigma=1, pi=PI, l1=.2, coeff='exp')
+    print(loader())
     model_params = dict(
             n_dict = 3,
             n_dim = 2,
@@ -333,7 +461,7 @@ if __name__ == '__main__':
             dict(params = ['s_data'], tau=tau_s, T=1),
             #dict(params = ['s_model'], tau=-tau_s/5, T=0),
             #dict(params = ['x_model'], tau=-tau_x/5, T=1),
-            dict(params = ['A'], tau=tau_A),
+            dict(params = ['A'], tau=tau_A*N_BATCH),
             ]
     init = dict(
             pi = PI,
@@ -345,7 +473,7 @@ if __name__ == '__main__':
             assert False
         soln = Solutions.load()
     except:
-        mtsc_solver = MTSCSolver(model_params, solver_params)
+        mtsc_solver = MTSCSolver(model_params, solver_params, coupling='exp', alpha=.2)
         mtsc_solver.model.reset_params(init=init)
         mtsc_solver.set_loader(loader, tau_x)
         soln = mtsc_solver.start_new_soln(tmax=tmax, n_soln=1000)

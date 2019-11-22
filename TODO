@@ -8,6 +8,9 @@ IDEAS:
 
 
 TODO:
+- Check out L0 sprasity for DSC
+- Add exp falloff to MTSC
+- Add noise to DSC
 - Precondition s, at least when simulating the physical system.
 - Convegence Experiments:
     1. Look at time for convergence for various Gaussian distr.s

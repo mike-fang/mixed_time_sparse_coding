@@ -25,7 +25,6 @@ def get_tmp_path(load=False, f_name=None):
 class Solutions:
     @classmethod
     def load(cls, f_name=None):
-        print(f_name)
         if f_name is None:
             # Pick the newest tmp file if none given
             f_name = get_tmp_path(load=True, f_name='soln.h5')
@@ -34,8 +33,8 @@ class Solutions:
         #self.h5_file = h5py.File(f_name, 'r')
     def __init__(self, solns=None, f_name=None, im_shape=None, overwrite=False):
         self.init_h5_file(f_name, overwrite)
+        self.im_shape = im_shape
         if solns is not None:
-            self.h5_file.attrs['im_shape'] = im_shape or ()
             self.save_soln(solns)
         self.get_shape()
     def init_h5_file(self, f_name, overwrite):
@@ -47,7 +46,7 @@ class Solutions:
             os.unlink(f_name)
         self.h5_file = h5py.File(f_name, 'a')
     def save_soln(self, solns):
-        #self.solns = solns
+        self.h5_file['im_shape'] = self.im_shape or ()
         for key, val in solns.items():
             self.h5_file.create_dataset(key, data=val)
         if not 'r_data' in self.h5_file:
