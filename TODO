@@ -8,6 +8,8 @@ IDEAS:
 
 
 TODO:
+- Make img visualization better
+- Async loading of X
 - Check out L0 sprasity for DSC
 - Add exp falloff to MTSC
 - Add noise to DSC

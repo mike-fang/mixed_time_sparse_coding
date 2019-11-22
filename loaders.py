@@ -2,7 +2,9 @@ import torch as th
 import numpy as np
 from math import pi
 import torch.nn.functional as F
+import h5py
 import matplotlib.pylab as plt
+from time import time
 
 class Loader:
     """
@@ -155,25 +157,59 @@ class StarLoader(SparseSampler):
         sin = th.sin(theta)
         return th.cat((cos[None, :], sin[None, :]), dim=0)
 
+class VanHaterenSampler():
+    IM_SHAPE = (1024, 1536)
+    def __init__(self, H, W, n_batch, ds_size=100, whiten=True, flatten=True, torch=True, load_buff=0):
+        self.ds_size = ds_size
+        self.img_ds = h5py.File('./vanhateren_imc/images.h5', 'a')[str(ds_size)]
+        self.H = H
+        self.W = W
+        self.n_batch = n_batch
+        self.whiten = whiten
+        self.flatten = flatten 
+        self.torch = torch
+        self.buffer = load_buff
+        if load_buff > n_batch:
+            self.load_buffer()
+    def load_buffer(self):
+    def sample(self, n_batch=None, whiten=True, flatten=True):
+        if n_batch is None:
+            n_batch = self.n_batch
+        i_max, j_max = self.IM_SHAPE
+        i_max -= self.W
+        j_max -= self.H
+
+        rand_n = np.random.randint(self.ds_size, size=n_batch)
+        rand_i = np.random.randint(i_max, size=n_batch)
+        rand_j = np.random.randint(j_max, size=n_batch)
+
+        sample_arr = np.zeros((n_batch, self.W, self.H))
+        for k in range(n_batch):
+            n = rand_n[k]
+            i = rand_i[k]
+            j = rand_j[k]
+            sample_arr[k] = self.img_ds[n, i:i+self.W, j:j+self.H]
+        if whiten:
+            std = np.std(sample_arr, axis=(1, 2))
+            mean = np.mean(sample_arr, axis=(1, 2))
+            sample_arr = (sample_arr - mean[:, None, None]) / std[:, None, None]
+
+        if flatten:
+            sample_arr = sample_arr.reshape((n_batch, -1))
+        if self.torch:
+            sample_arr = th.tensor(sample_arr).float()
+        return sample_arr
+    def __call__(self):
+        return self.sample(whiten=self.whiten, flatten=self.flatten)
+
 if __name__ == '__main__':
 
-    PI = .5
-    L1 = 10
-    SIGMA = .001
-    N_BATCH = 1000
-
-    fig, axes = plt.subplots(ncols=2, nrows=2)
-    axes_ = []
-    for row in axes:
-        axes_.extend(row)
-
-    axes = axes_
-
-    for ax, L1 in zip(axes, [1, 10, 100, 1000]):
-        loader = StarLoader(n_basis=3, n_batch=N_BATCH, sigma=SIGMA, pi=PI, l1=L1)
-        points = loader().numpy()
-        ax.scatter(*points.T, c='k', alpha=0.1)
-        ax.set_aspect(1.)
-        ax.set_xlim(-.5/L1, .5/L1)
-        ax.set_ylim(-.5/L1, .5/L1)
-    plt.show()
+    H = W = 8
+    n_batch = 16
+    vh_sampler = VanHaterenSampler(H, W, n_batch)
+    t0 = time()
+    ims = vh_sampler.sample().reshape((16, 8, 8))
+    print(time() - t0)
+    for im in ims:
+        plt.imshow(im, cmap='Greys')
+        plt.show()

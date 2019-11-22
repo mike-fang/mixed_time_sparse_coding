@@ -1,6 +1,7 @@
 import matplotlib.pylab as plt
 import numpy as np
 from matplotlib import animation
+from matplotlib import gridspec
 import h5py
 #from helpers import Solutions_H5
 
@@ -55,7 +56,7 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
     for ax_row in axes:
         for ax in ax_row:
             img_plot.append(
-                    ax.imshow([[0]])
+                    ax.imshow([[0]], cmap='greys')
                     )
             ax.set_xticks([])
             ax.set_yticks([])
@@ -74,6 +75,84 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
         anim.save(out_file)
     else:
         plt.show()
+
+def show_img_XRA(X, R, A, n_frames=None, ratio=1.5, out_file=None):
+    """
+        params: The parameter to visualize, should be reshaped to be (n_frame_total, n_sparse_total, n_dim1, n_dim2).
+        n_frames: Number of frames to be shown in animation, must be smaller than n_frame_total.
+        n_comps: Number of sparse components to display msut be smaller than n_sparse_total.
+        ratio: The aspect ratio to arrange axes for display.
+    """
+    n_frames_total, n_X, W, H = X.shape
+    n_frames_total_R, n_R, W_R, H_R = R.shape
+    n_frames_total_A, n_A, W_A, H_A = A.shape
+
+    assert n_frames_total == n_frames_total_R == n_frames_total_A
+    assert W == W_R == W_A
+    assert H == H_R == H_A
+
+    n_total = n_X + n_R + n_A
+
+    if n_frames is None:
+        skip = 1
+        n_frames = n_frame_total
+    else:
+        skip = n_frames_total // n_frames
+
+
+    # Get n_rows / n_cols
+    n_cols = ((n_total * ratio)**0.5)
+    rows_X = int(np.ceil(n_X / n_cols))
+    rows_R = int(np.ceil(n_R / n_cols))
+    rows_A = int(np.ceil(n_A / n_cols))
+    rows_total = rows_X + rows_A + rows_R
+    n_cols = int(np.ceil(n_cols))
+
+
+    # Make subplots
+    fig = plt.figure(figsize=(12, 8))
+    gs = fig.add_gridspec(rows_total, n_cols, hspace=2)
+    gs_X = fig.add_subplot(gs[:rows_X, :])
+    gs_R = fig.add_subplot(gs[rows_X:rows_X+rows_R, :])
+    gs_A = fig.add_subplot(gs[rows_X+rows_R:rows_X+rows_R+rows_A, :])
+
+    def make_img_gs(gs, n_rows, n_imgs, name):
+        gs.set_xticks([])
+        gs.set_yticks([])
+        gs.set_title(name)
+        inner_gs = gridspec.GridSpecFromSubplotSpec(n_rows, n_cols,subplot_spec=gs, wspace=.05, hspace=.05)
+        img_plots = []
+        for n in range(n_imgs):
+            ax = plt.Subplot(fig, inner_gs[n])
+            img_plots.append(ax.imshow([[0]], cmap='Greys'))
+            ax.set_xticks([])
+            ax.set_yticks([])
+            fig.add_subplot(ax)
+        return img_plots
+
+    plots_X = make_img_gs(gs_X, rows_X, n_X, 'Data')
+    plots_R = make_img_gs(gs_R, rows_R, n_R, 'Reconstruction')
+    plots_A = make_img_gs(gs_A, rows_A, n_A, 'Dictionary')
+
+    def update_im(imgs, n_imgs, img_plots, frame_n):
+        im = imgs[frame_n * skip]
+        for i in range(n_imgs):
+            img_plots[i].set_data(im[i])
+            img_plots[i].autoscale()
+
+    def animate(n):
+        update_im(X, n_X, plots_X, n)
+        update_im(R, n_R, plots_R, n)
+        update_im(A, n_A, plots_A, n)
+        fig.suptitle(n)
+    anim = animation.FuncAnimation(fig, animate, frames=n_frames, interval=100, repeat=True)
+    #plt.tight_layout()
+    if out_file is not None:
+        print(f'Saving animation to {out_file}..')
+        anim.save(out_file)
+    else:
+        plt.show()
+
 
 def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None, show_xmodel=False, show_smodel=False):
     X = soln['x_data']

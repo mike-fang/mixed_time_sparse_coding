@@ -155,51 +155,6 @@ class MTSCModel_NoModel(Module):
         return self.energy(x)
 
 # Misc Fns
-def get_timestamped_dir(load=False, base_dir=None):
-    if base_dir is None:
-        base_dir = 'tmp'
-    if load:
-        tmp_files = glob(os.path.join(FILE_DIR, 'results', base_dir, '*'))
-        tmp_files.sort()
-        dir_name = tmp_files[-1]
-    else:
-        time_stamp = f'{time():.0f}'
-        dir_name = os.path.join(FILE_DIR, 'results', base_dir, time_stamp)
-        os.makedirs(dir_name)
-    return dir_name
-def get_param_groups(solver_params, model): 
-    param_groups = []
-    for sp in solver_params:
-        pg = dict(sp)
-        params = []
-        for n, p in model.named_parameters():
-            if n in sp['params']:
-                params.append(p)
-        pg['params'] = params
-        param_groups.append(pg)
-    return param_groups
-def get_model_solver(model_params=None, solver_params=None, path=None, noise_cache=0, model_class=MTSCModel):
-    if path is not None:
-        with open(os.path.join(path), 'r') as f:
-            hp = json.load(f)
-        model_params = hp['model_params']
-        solver_params = hp['solver_params']
-    model = model_class(**model_params)
-    param_groups = get_param_groups(solver_params, model)
-    solver = EulerMaruyama(param_groups, noise_cache=noise_cache)
-    return model, solver
-def save_checkpoint(model, solver, t, out_dir, f_name=None):
-    checkpoint = {
-            't': t,
-            'model_sd': model.state_dict(),
-            'solver_sd': solver.state_dict(),
-            }
-    if f_name is None:
-        f_name = f'checkpoint_{t}.pth'
-    out_path = os.path.join(out_dir, f_name)
-    th.save(checkpoint, out_path)
-    print(f'Checkpoint saved to {out_path}')
-    return checkpoint
 def train_dsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_dir=None, t_save=None, normalize_A=True, alpha=None):
     tmax = int(tmax)
     tau_x = int(tau_x)
@@ -261,7 +216,52 @@ def train_dsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_di
     for k, v in soln.items():
         soln[k] = np.array(v)
     return soln
-def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_dir=None, t_save=None, normalize_A=True, coupling='const', coupling_scale='tmax', alpha=None):
+def get_timestamped_dir(load=False, base_dir=None):
+    if base_dir is None:
+        base_dir = 'tmp'
+    if load:
+        tmp_files = glob(os.path.join(FILE_DIR, 'results', base_dir, '*'))
+        tmp_files.sort()
+        dir_name = tmp_files[-1]
+    else:
+        time_stamp = f'{time():.0f}'
+        dir_name = os.path.join(FILE_DIR, 'results', base_dir, time_stamp)
+        os.makedirs(dir_name)
+    return dir_name
+def get_param_groups(solver_params, model): 
+    param_groups = []
+    for sp in solver_params:
+        pg = dict(sp)
+        params = []
+        for n, p in model.named_parameters():
+            if n in sp['params']:
+                params.append(p)
+        pg['params'] = params
+        param_groups.append(pg)
+    return param_groups
+def get_model_solver(model_params=None, solver_params=None, path=None, noise_cache=0, model_class=MTSCModel):
+    if path is not None:
+        with open(os.path.join(path), 'r') as f:
+            hp = json.load(f)
+        model_params = hp['model_params']
+        solver_params = hp['solver_params']
+    model = model_class(**model_params)
+    param_groups = get_param_groups(solver_params, model)
+    solver = EulerMaruyama(param_groups, noise_cache=noise_cache)
+    return model, solver
+def save_checkpoint(model, solver, t, out_dir, f_name=None):
+    checkpoint = {
+            't': t,
+            'model_sd': model.state_dict(),
+            'solver_sd': solver.state_dict(),
+            }
+    if f_name is None:
+        f_name = f'checkpoint_{t}.pth'
+    out_path = os.path.join(out_dir, f_name)
+    th.save(checkpoint, out_path)
+    print(f'Checkpoint saved to {out_path}')
+    return checkpoint
+def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_dir=None, t_save=None, normalize_A=True, coupling='const', coupling_scale='tmax', alpha=None, rand_tau_x=False):
     if callable(coupling):
         # Already given a function
         pass
@@ -302,7 +302,7 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
     soln = defaultdict(list)
 
     # train model
-    #x = loader()
+    x = loader()
     def closure():
         energy = model(x)
         energy.backward()
@@ -314,9 +314,21 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
                 A_group = p
         except:
             pass
-    for t in tqdm(range(t_start, tmax + 1)):
+    x0 = x
+    if rand_tau_x:
+        load_x = th.LongTensor(tmax, loader.n_batch).bernoulli_(1/tau_x)
+    for t in tqdm(range(t_start, tmax)):
+        if rand_tau_x:
+            load_idx = load_x[t]
+            if load_idx.sum() > 0:
+                x_ = x.clone()
+                x_[load_idx.nonzero()] = loader()[load_idx.nonzero()]
+                x = x_
         if t % int(tau_x) == 0:
-            x = loader()
+            if not rand_tau_x:
+                x = loader()
+            overflow = ( th.any(th.isinf(model.s_data)) or th.any(th.isnan(model.s_data)) )
+            assert not overflow
         if alpha is not None:
             t_ = (t % coupling_scale) / coupling_scale * alpha
             A_group['coupling'] = coupling(t_)
@@ -397,7 +409,7 @@ class MTSCSolver:
             self.model.load_state_dict(checkpoint['model_sd'])
             self.solver.load_state_dict(checkpoint['solver_sd'])
         return checkpoint
-    def start_new_soln(self, tmax, tstart=0, n_soln=None, t_save=None, soln_name=None):
+    def start_new_soln(self, tmax, tstart=0, n_soln=None, t_save=None, soln_name=None, rand_tau_x=False):
         if soln_name is None:
             self.dir_path = get_timestamped_dir(base_dir=self.base_dir)
             print(f'Saving experiment to directory {self.dir_path}')
@@ -411,7 +423,7 @@ class MTSCSolver:
                         break
             else:
                 soln_name = name
-        soln_dict = self.trainer(tmax=tmax, t_start=tstart, loader=self.loader, tau_x=self.tau_x, model=self.model, solver=self.solver, n_soln=n_soln, out_dir=self.dir_path, t_save=t_save, alpha=self.alpha, coupling=self.coupling)
+        soln_dict = self.trainer(tmax=tmax, t_start=tstart, loader=self.loader, tau_x=self.tau_x, model=self.model, solver=self.solver, n_soln=n_soln, out_dir=self.dir_path, t_save=t_save, alpha=self.alpha, coupling=self.coupling, rand_tau_x=rand_tau_x)
         soln = Solutions(soln_dict, f_name=soln_name, im_shape=self.im_shape)
         return soln
     def load_soln(self, f_name=None):
