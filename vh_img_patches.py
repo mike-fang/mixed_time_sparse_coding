@@ -10,14 +10,15 @@ H = W = 8
 n_batch = 64
 p = 0.05
 loader = VanHaterenSampler(H, W, n_batch)
-TAU_S = int(2e2)
-TAU_X = int(5e2)
-TAU_A = int(1e3)
+TAU_S = int(1e2)
+TAU_X = int(1e3)
+TAU_A = int(1e4)
 TAU_RATIO = 10
 ALPHA = 0.2
-OC = 1
+OC = 2
+ASYNCH = True
 n_dict = int(H*W*OC)
-tmax = 1e4
+tmax = 1e5
 
 def coupling_A(t_):
     return (1 + (TAU_RATIO - 1) * np.exp(-t_/ALPHA))**(-1)
@@ -30,20 +31,23 @@ model_params = dict(
         positive = True
         )
 solver_params = [
-        dict(params = ['s_data'], tau=TAU_S, T=0),
+        dict(params = ['s_data'], tau=TAU_S, T=1),
         dict(params = ['A'], tau=TAU_A*n_batch),
         ]
 init = dict(
-        l1 = 1,
-        pi = 1,
+        l1 = .5,
+        pi = .2,
         sigma = 1,
         )
 
 mtsc_solver = MTSCSolver(model_params, solver_params, base_dir='vh_patches', im_shape=(H, W), coupling=coupling_A)
 mtsc_solver.model.reset_params(init=init)
 mtsc_solver.set_loader(loader, tau_x=TAU_X)
-soln = mtsc_solver.start_new_soln(tmax=tmax, n_soln=10000, t_save=1e5, rand_tau_x=True)
-#soln = mtsc_solver.load('dsc_4x4')
+#soln = mtsc_solver.start_new_soln(tmax=tmax, n_soln=10000, t_save=1e5, rand_tau_x=ASYNCH)
+#mtsc_solver.load()
+#mtsc_solver.load_checkpoint()
+soln = mtsc_solver.start_new_soln(tmax=tmax, n_soln=10000, t_save=1e5, rand_tau_x=ASYNCH)
+
 
 dir_path = mtsc_solver.dir_path
 #plt.plot(soln['energy'])

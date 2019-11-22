@@ -210,7 +210,7 @@ def train_dsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_di
             soln['x_data'].append(x.data.numpy())
             soln['t'].append(t)
             soln['energy'].append(energy)
-        if (t_save is not None) and (t % t_save == 0):
+        if (t_save is not None and t % t_save == 0):
             save_checkpoint(model, solver, t, out_dir)
 
     for k, v in soln.items():
@@ -347,7 +347,7 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
             soln['x_data'].append(x.data.numpy())
             soln['t'].append(t)
             soln['energy'].append(energy)
-        if (t_save is not None) and (t % t_save == 0):
+        if (t_save is not None) and ((t % t_save == 0) or t == tmax - 1):
             save_checkpoint(model, solver, t, out_dir)
 
     for k, v in soln.items():
@@ -410,6 +410,8 @@ class MTSCSolver:
             self.solver.load_state_dict(checkpoint['solver_sd'])
         return checkpoint
     def start_new_soln(self, tmax, tstart=0, n_soln=None, t_save=None, soln_name=None, rand_tau_x=False):
+        if t_save is None:
+            t_save = tmax
         if soln_name is None:
             self.dir_path = get_timestamped_dir(base_dir=self.base_dir)
             print(f'Saving experiment to directory {self.dir_path}')

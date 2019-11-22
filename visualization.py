@@ -124,7 +124,7 @@ def show_img_XRA(X, R, A, n_frames=None, ratio=1.5, out_file=None):
         img_plots = []
         for n in range(n_imgs):
             ax = plt.Subplot(fig, inner_gs[n])
-            img_plots.append(ax.imshow([[0]], cmap='Greys'))
+            img_plots.append(ax.imshow([[0]], cmap='Greys_r'))
             ax.set_xticks([])
             ax.set_yticks([])
             fig.add_subplot(ax)

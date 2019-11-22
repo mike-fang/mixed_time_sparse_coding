@@ -172,6 +172,7 @@ class VanHaterenSampler():
         if load_buff > n_batch:
             self.load_buffer()
     def load_buffer(self):
+        pass
     def sample(self, n_batch=None, whiten=True, flatten=True):
         if n_batch is None:
             n_batch = self.n_batch
