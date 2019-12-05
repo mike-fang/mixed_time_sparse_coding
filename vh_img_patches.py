@@ -6,19 +6,18 @@ from visualization import show_img_evo, show_img_XRA
 from mtsc import *
 
 #Define loader
-H = W = 8
-n_batch = 64
+H = W = 16
+n_batch = H * W
 p = 0.05
-loader = VanHaterenSampler(H, W, n_batch)
-TAU_S = int(1e2)
-TAU_X = int(1e3)
-TAU_A = int(1e4)
+TAU_S = int(2e2)
+TAU_X = int(2e3)
+TAU_A = int(2e4)
 TAU_RATIO = 10
 ALPHA = 0.2
 OC = 2
 ASYNCH = True
 n_dict = int(H*W*OC)
-tmax = 1e5
+tmax = 1e3
 
 def coupling_A(t_):
     return (1 + (TAU_RATIO - 1) * np.exp(-t_/ALPHA))**(-1)
@@ -37,16 +36,17 @@ solver_params = [
 init = dict(
         l1 = .5,
         pi = .2,
-        sigma = 1,
+        sigma = .5,
         )
+t_load = 0
+loader = VanHaterenSampler(H, W, n_batch, whiten=False, buffer_size = 0e3 if ASYNCH else 0)
 
 mtsc_solver = MTSCSolver(model_params, solver_params, base_dir='vh_patches', im_shape=(H, W), coupling=coupling_A)
 mtsc_solver.model.reset_params(init=init)
 mtsc_solver.set_loader(loader, tau_x=TAU_X)
-#soln = mtsc_solver.start_new_soln(tmax=tmax, n_soln=10000, t_save=1e5, rand_tau_x=ASYNCH)
 #mtsc_solver.load()
-#mtsc_solver.load_checkpoint()
-soln = mtsc_solver.start_new_soln(tmax=tmax, n_soln=10000, t_save=1e5, rand_tau_x=ASYNCH)
+#_, t_load = mtsc_solver.load_checkpoint()
+soln = mtsc_solver.start_new_soln(tstart=t_load, tmax=t_load+tmax, n_soln=10000, t_save=1e3, rand_tau_x=ASYNCH)
 
 
 dir_path = mtsc_solver.dir_path
@@ -60,4 +60,4 @@ A = reshaped_params['A']
 
 out_path = os.path.join(dir_path, 'evol.mp4')
 #out_path = None
-show_img_XRA(X, R, A, n_frames=100, out_file=out_path)
+#show_img_XRA(X, R, A, n_frames=100, out_file=out_path)

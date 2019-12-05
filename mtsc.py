@@ -261,7 +261,7 @@ def save_checkpoint(model, solver, t, out_dir, f_name=None):
     th.save(checkpoint, out_path)
     print(f'Checkpoint saved to {out_path}')
     return checkpoint
-def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_dir=None, t_save=None, normalize_A=True, coupling='const', coupling_scale='tmax', alpha=None, rand_tau_x=False):
+def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_dir=None, t_save=None, normalize_A=True, coupling='const', coupling_scale='tmax', alpha=None, asynch=False):
     if callable(coupling):
         # Already given a function
         pass
@@ -315,20 +315,23 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
         except:
             pass
     x0 = x
-    if rand_tau_x:
+    if asynch:
         load_x = th.LongTensor(tmax, loader.n_batch).bernoulli_(1/tau_x)
     for t in tqdm(range(t_start, tmax)):
-        if rand_tau_x:
+        if asynch:
             load_idx = load_x[t]
-            if load_idx.sum() > 0:
+            load_size = load_idx.sum()
+            if load_size > 0:
                 x_ = x.clone()
-                x_[load_idx.nonzero()] = loader()[load_idx.nonzero()]
+                x_.data[load_idx.nonzero()] = loader(n_batch = load_size).view(load_size, 1, -1)
                 x = x_
         if t % int(tau_x) == 0:
-            if not rand_tau_x:
+            if not asynch:
                 x = loader()
             overflow = ( th.any(th.isinf(model.s_data)) or th.any(th.isnan(model.s_data)) )
-            assert not overflow
+            if overflow:
+                print('overflow')
+                model.s_data.normal_()
         if alpha is not None:
             t_ = (t % coupling_scale) / coupling_scale * alpha
             A_group['coupling'] = coupling(t_)
@@ -373,6 +376,7 @@ class MTSCSolver:
         self.alpha = alpha
         self.trainer = trainer
         self.coupling = coupling
+        self.dir_path = None
 
         if noise_cache > 0:
             self.solver.reset_noise(noise_cache=noise_cache)
@@ -405,33 +409,37 @@ class MTSCSolver:
         elif chp_name in ['first', 'start']:
             chp_name = os.path.join(self.dir_path, 'checkpoint_0.pth')
         checkpoint = th.load(chp_name)
+        t_load = int(os.path.basename(chp_name)[:-4].split('_')[1])
+        self.t_load = t_load
         if auto_load:
             self.model.load_state_dict(checkpoint['model_sd'])
             self.solver.load_state_dict(checkpoint['solver_sd'])
-        return checkpoint
+        return checkpoint, t_load
     def start_new_soln(self, tmax, tstart=0, n_soln=None, t_save=None, soln_name=None, rand_tau_x=False):
         if t_save is None:
             t_save = tmax
         if soln_name is None:
-            self.dir_path = get_timestamped_dir(base_dir=self.base_dir)
+            if self.dir_path is None:
+                self.dir_path = get_timestamped_dir(base_dir=self.base_dir)
             print(f'Saving experiment to directory {self.dir_path}')
             name = os.path.join(self.dir_path, 'soln.h5')
             self.tmax = tmax
             self.save_hyperparams()
             if os.path.isfile(name):
-                for n in range(100):
+                for n in range(1, 100):
                     soln_name = os.path.join(self.dir_path, f'soln_{n}.h5')
                     if not os.path.isfile(soln_name):
                         break
             else:
                 soln_name = name
-        soln_dict = self.trainer(tmax=tmax, t_start=tstart, loader=self.loader, tau_x=self.tau_x, model=self.model, solver=self.solver, n_soln=n_soln, out_dir=self.dir_path, t_save=t_save, alpha=self.alpha, coupling=self.coupling, rand_tau_x=rand_tau_x)
+        soln_dict = self.trainer(tmax=tmax, t_start=tstart, loader=self.loader, tau_x=self.tau_x, model=self.model, solver=self.solver, n_soln=n_soln, out_dir=self.dir_path, t_save=t_save, alpha=self.alpha, coupling=self.coupling, asynch=rand_tau_x)
         soln = Solutions(soln_dict, f_name=soln_name, im_shape=self.im_shape)
         return soln
-    def load_soln(self, f_name=None):
+    def load_soln(self, f_name=None, auto_load=True):
         if f_name is None:
             f_name = os.path.join(self.dir_path, 'soln.h5')
         soln = Solutions.load(f_name)
+        self.load_checkpoint()
         return soln
     def load(self, path=None):
         if path is None:
@@ -445,8 +453,7 @@ class MTSCSolver:
         solver_params = hp['solver_params']
         self.set_model_solver(model_params, solver_params)
         self.dir_path = dir_path
-        return Solutions.load(os.path.join(self.dir_path, 'soln.h5'))
-        #return cls(model_params, solver_params, dir_path)
+        #return Solutions.load(os.path.join(self.dir_path, 'soln.h5'))
 
 class DSCSolver(MTSCSolver):
     def __init__(self, model_params, solver_params, **kwargs):

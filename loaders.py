@@ -3,6 +3,7 @@ import numpy as np
 from math import pi
 import torch.nn.functional as F
 import h5py
+from scipy.io import loadmat
 import matplotlib.pylab as plt
 from time import time
 
@@ -158,29 +159,37 @@ class StarLoader(SparseSampler):
         return th.cat((cos[None, :], sin[None, :]), dim=0)
 
 class VanHaterenSampler():
-    IM_SHAPE = (1024, 1536)
-    def __init__(self, H, W, n_batch, ds_size=100, whiten=True, flatten=True, torch=True, load_buff=0):
-        self.ds_size = ds_size
-        self.img_ds = h5py.File('./vanhateren_imc/images.h5', 'a')[str(ds_size)]
+    def __init__(self, H, W, n_batch, flatten=True, torch=True, buffer_size=0):
+        #self.img_ds = h5py.File('./vanhateren_imc/images.h5', 'a')[str(ds_size)]
+        self.img_ds = h5py.File('./vanhateren_imc/images_bao.h5', 'r')['images']
         self.H = H
         self.W = W
         self.n_batch = n_batch
-        self.whiten = whiten
         self.flatten = flatten 
         self.torch = torch
-        self.buffer = load_buff
-        if load_buff > n_batch:
-            self.load_buffer()
-    def load_buffer(self):
-        pass
-    def sample(self, n_batch=None, whiten=True, flatten=True):
+        self.buffer = int(buffer_size)
+        if self.buffer > 0:
+            assert self.buffer > n_batch
+            self.reset_buffer()
+    def reset_buffer(self):
+        self.buff_batch = self.sample(flatten=self.flatten, n_batch=self.buffer)
+        self.buff_idx = 0
+    def sample_buffer(self, n_batch):
+        end_idx = self.buff_idx + n_batch
+        if end_idx > self.buffer:
+            self.reset_buffer
+        buff = self.buff_batch[self.buff_idx: end_idx]
+        self.buff_idx += n_batch
+        return buff
+    def sample(self, n_batch=None, flatten=None):
         if n_batch is None:
             n_batch = self.n_batch
-        i_max, j_max = self.IM_SHAPE
+        if flatten is None:
+            flatten = self.flatten
+        ds_size, i_max, j_max = self.img_ds.shape
         i_max -= self.W
         j_max -= self.H
-
-        rand_n = np.random.randint(self.ds_size, size=n_batch)
+        rand_n = np.random.randint(ds_size, size=n_batch)
         rand_i = np.random.randint(i_max, size=n_batch)
         rand_j = np.random.randint(j_max, size=n_batch)
 
@@ -190,27 +199,28 @@ class VanHaterenSampler():
             i = rand_i[k]
             j = rand_j[k]
             sample_arr[k] = self.img_ds[n, i:i+self.W, j:j+self.H]
-        if whiten:
-            std = np.std(sample_arr, axis=(1, 2))
-            mean = np.mean(sample_arr, axis=(1, 2))
-            sample_arr = (sample_arr - mean[:, None, None]) / std[:, None, None]
 
         if flatten:
             sample_arr = sample_arr.reshape((n_batch, -1))
         if self.torch:
             sample_arr = th.tensor(sample_arr).float()
         return sample_arr
-    def __call__(self):
-        return self.sample(whiten=self.whiten, flatten=self.flatten)
+    def __call__(self, n_batch=None):
+        if n_batch is None:
+            n_batch = self.n_batch
+        if self.buffer == 0:
+            return self.sample(flatten=self.flatten, n_batch=n_batch)
+        else:
+            return self.sample_buffer(n_batch)
 
 if __name__ == '__main__':
-
-    H = W = 8
+    H = W = 16
     n_batch = 16
-    vh_sampler = VanHaterenSampler(H, W, n_batch)
+    vh_sampler = VanHaterenSampler(H, W, n_batch, buffer_size=1e3)
     t0 = time()
-    ims = vh_sampler.sample().reshape((16, 8, 8))
+    ims = vh_sampler(16).reshape((16, H, W))
     print(time() - t0)
-    for im in ims:
-        plt.imshow(im, cmap='Greys')
-        plt.show()
+    for n, im in enumerate(ims):
+        plt.subplot(4, 4, n+1)
+        plt.imshow(im, cmap='Greys_r')
+    plt.show()

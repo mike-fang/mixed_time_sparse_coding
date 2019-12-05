@@ -111,7 +111,7 @@ def show_img_XRA(X, R, A, n_frames=None, ratio=1.5, out_file=None):
 
     # Make subplots
     fig = plt.figure(figsize=(12, 8))
-    gs = fig.add_gridspec(rows_total, n_cols, hspace=2)
+    gs = fig.add_gridspec(rows_total, n_cols)
     gs_X = fig.add_subplot(gs[:rows_X, :])
     gs_R = fig.add_subplot(gs[rows_X:rows_X+rows_R, :])
     gs_A = fig.add_subplot(gs[rows_X+rows_R:rows_X+rows_R+rows_A, :])
