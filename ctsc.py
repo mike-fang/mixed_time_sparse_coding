@@ -18,6 +18,9 @@ def get_dt(tspan):
     dt[1:] = tspan[1:] - tspan[:-1]
     return dt
 def get_time_interval(tspan, N=None, dt=None):
+    if not (N or dt):
+        return None
+
     tspan -= min(tspan)
     if N is not None:
         dt = tspan[-1]/N
@@ -27,7 +30,6 @@ def get_time_interval(tspan, N=None, dt=None):
     for n in np.unique(tspan//dt):
         idx = np.argmin(np.abs(tspan - n*dt))
         interval[idx] = True
-
     return interval
 def get_timestamped_dir(load=False, base_dir=None):
     if base_dir is None:
@@ -65,17 +67,6 @@ class CTSCModel(Module):
         self.l1 = l1
         self.pi = pi
         self.init_params()
-    def hyperparams(self):
-        hp = dict(
-                n_dim=self.n_dim,
-                n_dict=self.n_dict,
-                n_batch=self.n_batch,
-                positive=self.positive,
-                sigma=self.sigma,
-                l1=self.l1,
-                pi=self.pi,
-                )
-        return hp
     def init_params(self):
         self.A = Parameter(th.Tensor(self.n_dim, self.n_dict))
         self.u = Parameter(th.Tensor(self.n_dict, self.n_batch))
@@ -124,6 +115,11 @@ class CTSCSolver:
                 ]
         self.optimizer = EulerMaruyama(optim_params)
         self.asynch = asynch
+    def get_dir_path(self, base_dir, load=False):
+        dir_path = get_timestamped_dir(load=load, base_dir=base_dir)
+        if not load:
+            self.dir_path = dir_path
+        return dir_path
     def load_batch_size(self, tspan):
         where_load = th.zeros(len(tspan), self.n_batch)
         if self.asynch:
@@ -135,7 +131,7 @@ class CTSCSolver:
                 idx = np.argmin(np.abs(tspan - n*self.tau_x))
                 where_load[idx] = self.model.n_batch
         return where_load
-    def solve(self, tspan, normalize_A=True, out_N=None, out_T=None, save_soln=False):
+    def solve(self, tspan, normalize_A=True, out_N=None, out_T=None, save_N=None, save_T=None):
         # Get initial data x
         x = self.loader()
 
@@ -148,13 +144,9 @@ class CTSCSolver:
         # When to load new data
         load_n = self.load_batch_size(tspan)
 
-        # Where to save output
-        if out_N is not None:
-            save_time = get_time_interval(tspan, N=out_N)
-        elif out_T is not None:
-            save_time = get_time_interval(tspan, dt=out_T)
-        else:
-            save_time = None
+        # Where to save soln and checkpoint
+        soln_time = get_time_interval(tspan, N=out_N, dt=out_T)
+        ckpt_time = get_time_interval(tspan, N=save_N, dt=save_T)
 
         # Delta Ts in case dt != 1
         dtspan = get_dt(tspan)
@@ -180,9 +172,12 @@ class CTSCSolver:
             if normalize_A:
                 self.model.A.data = self.model.A / self.model.A.norm(dim=0)
 
+            # Save Checkpoint
+            if ckpt_time is not None and ckpt_time[n]:
+                self.save_checkpoint()
 
             # Save solution
-            if save_time is not None and save_time[n]:
+            if soln_time is not None and soln_time[n]:
                 soln['r'].append(self.model.r.data.numpy())
                 soln['u'].append(self.model.u.data.numpy())
                 soln['s'].append(self.model.s.data.numpy())
@@ -195,22 +190,26 @@ class CTSCSolver:
             return soln
         else:
             return None
-    def save_hyperparams(self, dir_path):
+    def save_hyperparams(self, dir_path=None):
+        if dir_path is None:
+            dir_path = self.dir_path
         params = dict(
                 model_params=self.model.params,
                 solver_params=self.params,
                 )
         with open(os.path.join(dir_path, 'params.json'), 'w') as f:
             yaml.dump(params, f)
-    def save_soln(self, soln, base_dir):
+    def save_soln(self, soln, dir_path=None):
+        if dir_path is None:
+            dir_path = self.dir_path
         t_last = soln['t'][-1]
-        dir_path = get_timestamped_dir(base_dir=base_dir)
+        #dir_path = get_timestamped_dir(base_dir=base_dir)
         self.save_hyperparams(dir_path)
         self.save_checkpoint(dir_path, t_last)
         soln_h5 = h5py.File(os.path.join(dir_path, 'soln.h5'), 'w')
         for k, v in soln.items():
             soln_h5.create_dataset(k, data=v)
-    def save_checkpoint(self, out_dir, t):
+    def save_checkpoint(self, t, out_dir=None):
         checkpoint = {
                 't': t,
                 'model_sd': self.model.state_dict(),
@@ -234,7 +233,6 @@ class CTSCSolver:
         self.model.load_state_dict(checkpoint['model_sd'])
         self.optimizer.load_state_dict(checkpoint['optim_sd'])
         return checkpoint, t_load
-
 if __name__ == '__main__':
     from loaders import BarsLoader
     from visualization import show_img_XRA
