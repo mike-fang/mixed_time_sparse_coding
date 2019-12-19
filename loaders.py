@@ -63,7 +63,7 @@ class StarLoader_(Loader):
         X = self.A * th.cat((cos[:,None], sin[:,None]), dim=1)
         return X
 
-class HVLinesLoader:
+class BarsLoader:
     def __init__(self, H, W, n_batch, p=0.1, positive=False):
         self.H = H
         self.W = W
@@ -75,16 +75,18 @@ class HVLinesLoader:
         self.set_bases()
     def reset(self):
         pass
-    def get_batch(self, reshape=False):
-        S = th.Tensor(self.n_batch, self.W + self.H).bernoulli_(self.p)
-        multiplier = th.Tensor(self.n_batch, self.W + self.H).uniform_()
+    def get_batch(self, reshape=False, n_batch=None):
+        if n_batch is None:
+            n_batch = self.n_batch
+        S = th.Tensor(n_batch, self.W + self.H).bernoulli_(self.p)
+        multiplier = th.Tensor(n_batch, self.W + self.H).uniform_()
         if self.positive:
             multiplier -= 0.5
         S *= multiplier
         batch = S @ self.bases
 
         if reshape:
-            return batch.reshape((self.n_batch, self.H, self.W))
+            return batch.reshape((n_batch, self.H, self.W))
         else:
             return batch
     def set_bases(self, flatten=True):
@@ -98,8 +100,8 @@ class HVLinesLoader:
         else:
             self.bases = bases
         return self.bases
-    def __call__(self):
-        return self.get_batch()
+    def __call__(self, n_batch=None):
+        return self.get_batch(n_batch=n_batch)
     def __repr__(self):
         desc = 'HVLinesLoader\n'
         desc += f'H, W: {self.H}, {self.W}\n'

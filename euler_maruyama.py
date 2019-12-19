@@ -3,10 +3,12 @@ from torch.optim.optimizer import Optimizer, required
 from collections import defaultdict 
 import numpy as np
 
+
 class EulerMaruyama(Optimizer):
     def __init__(self,  param_groups, dt=1, tau=required, mu=0, T=0, coupling=1, noise_cache=0):
         for n, d in enumerate(param_groups):
-            if d['tau'] in [None, 0]:
+            tau = d['tau']
+            if tau in [None, 0]:
                 param_groups.pop(n)
         defaults = dict(dt=dt, tau=tau, mu=mu, coupling=coupling, T=T)
         super().__init__(param_groups, defaults)
@@ -19,7 +21,6 @@ class EulerMaruyama(Optimizer):
             scale = (2 * group['T'] * group['dt'] / group['tau'])**0.5
             if scale == 0:
                 continue
-
             mu = group['mu']
             for p in group['params']:
                 param_state = self.state[p]

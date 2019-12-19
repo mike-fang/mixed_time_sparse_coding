@@ -76,13 +76,22 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
     else:
         plt.show()
 
-def show_img_XRA(X, R, A, n_frames=None, ratio=1.5, out_file=None):
+def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=None):
     """
         params: The parameter to visualize, should be reshaped to be (n_frame_total, n_sparse_total, n_dim1, n_dim2).
         n_frames: Number of frames to be shown in animation, must be smaller than n_frame_total.
         n_comps: Number of sparse components to display msut be smaller than n_sparse_total.
         ratio: The aspect ratio to arrange axes for display.
     """
+
+    if img_shape is not None:
+        H, W = img_shape
+        n_frames_total, n_batch, _ = X.shape
+        n_frames_total, n_dict, _ = A.shape
+        X = X.reshape((n_frames_total, n_batch, H, W))
+        R = R.reshape((n_frames_total, n_batch, H, W))
+        A = A.reshape((n_frames_total, n_dict, H, W))
+
     n_frames_total, n_X, W, H = X.shape
     n_frames_total_R, n_R, W_R, H_R = R.shape
     n_frames_total_A, n_A, W_A, H_A = A.shape
@@ -95,7 +104,7 @@ def show_img_XRA(X, R, A, n_frames=None, ratio=1.5, out_file=None):
 
     if n_frames is None:
         skip = 1
-        n_frames = n_frame_total
+        n_frames = n_frames_total
     else:
         skip = n_frames_total // n_frames
 
@@ -111,7 +120,7 @@ def show_img_XRA(X, R, A, n_frames=None, ratio=1.5, out_file=None):
 
     # Make subplots
     fig = plt.figure(figsize=(12, 8))
-    gs = fig.add_gridspec(rows_total, n_cols)
+    gs = fig.add_gridspec(rows_total, n_cols, hspace=.3)
     gs_X = fig.add_subplot(gs[:rows_X, :])
     gs_R = fig.add_subplot(gs[rows_X:rows_X+rows_R, :])
     gs_A = fig.add_subplot(gs[rows_X+rows_R:rows_X+rows_R+rows_A, :])
@@ -152,7 +161,6 @@ def show_img_XRA(X, R, A, n_frames=None, ratio=1.5, out_file=None):
         anim.save(out_file)
     else:
         plt.show()
-
 
 def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None, show_xmodel=False, show_smodel=False):
     X = soln['x_data']

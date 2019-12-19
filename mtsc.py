@@ -18,7 +18,6 @@ from solution_saver import Solutions
 import sys
 import traceback
 
-
 FILE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 class MTSCModel(Module):
@@ -73,12 +72,84 @@ class MTSCModel(Module):
     def s0(self):
         return F.softplus(-self.rho) / self.l1
     # // Energy definition //
-    def get_recon(self, s):
+    def get_u(self, s):
         if self.positive:
             u = F.relu(s - self.s0) + F.relu(-s - self.s0)
         else:
             u = F.relu(s - self.s0) - F.relu(-s - self.s0)
-        return (self.A @ u).T
+        return u
+    def get_recon(self, s):
+        return (self.A @ self.get_u(s)).T
+    def sc_energy(self, s, x):
+        r = self.get_recon(s)
+        recon_loss = 0.5 * ((x - r)**2).sum()
+        sparse_loss = th.abs(s).sum() 
+        return (self.tau * recon_loss + self.l1 * sparse_loss) 
+    def energy(self, x_data):
+        return self.sc_energy(self.s_data, x_data)# - 0*self.sc_energy(self.s_model, self.x_model)
+    def forward(self, x):
+        return self.energy(x)
+
+class MTSCModel(Module):
+    # // Init //
+    def __init__(self, n_dim, n_dict, n_batch, positive=False):
+        super().__init__()
+        self.n_dim = n_dim
+        self.n_dict = n_dict
+        self.n_batch = n_batch
+        self.positive = positive
+
+        self.init_params()
+    def init_params(self, init=[None]):
+        self.A = Parameter(th.Tensor(self.n_dim, self.n_dict))
+        self.tau = Parameter(th.Tensor(1))
+        self.l1 = Parameter(th.Tensor(1))
+        self.rho = Parameter(th.Tensor(1))
+
+        self.s_data = Parameter(th.Tensor(self.n_dict, self.n_batch))
+        self.x_model = Parameter(th.Tensor(self.n_batch, self.n_dim))
+        self.s_model = Parameter(th.Tensor(self.n_dict, self.n_batch))
+
+        self.reset_params(init=init)
+    def reset_params(self, init=[None]):
+        self.A.data.normal_()
+        self.s_data.data.normal_()
+        self.s_model.data.normal_()
+        self.x_model.data.normal_()
+
+        self.tau.data = th.tensor(1.)
+        self.l1.data = th.tensor(1.)
+        self.rho.data = th.tensor(0.6)
+        if init != [None]:
+            for n in init:
+                init[n] = th.tensor(init[n], dtype=th.float)
+        for n, p in self.named_parameters():
+            if n in init:
+                p.data = init[n]
+        if 'pi' in init:
+            self.pi = init['pi']
+        if 'sigma' in init:
+            self.tau.data = init['sigma']**(-1)
+    # // Param conversions // 
+    @property
+    def pi(self):
+        return th.sigmoid(self.rho.data)
+    @pi.setter
+    def pi(self, pi):
+        pi = th.tensor(pi, dtype=th.float)
+        self.rho.data = th.log(pi / (1 - pi))
+    @property
+    def s0(self):
+        return F.softplus(-self.rho) / self.l1
+    # // Energy definition //
+    def get_u(self, s):
+        if self.positive:
+            u = F.relu(s - self.s0) + F.relu(-s - self.s0)
+        else:
+            u = F.relu(s - self.s0) - F.relu(-s - self.s0)
+        return u
+    def get_recon(self, s):
+        return (self.A @ self.get_u(s)).T
     def sc_energy(self, s, x):
         r = self.get_recon(s)
         recon_loss = 0.5 * ((x - r)**2).sum()
@@ -204,7 +275,9 @@ def train_dsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_di
             #_, S, _ = np.linalg.svd(A)
         if t in when_out:
             for n, p in model.named_parameters():
+                print(n)
                 soln[n].append(p.clone().data.cpu().numpy())
+            soln['u_model'].append(model.get_u(model.s_model).data.numpy())
             soln['r_model'].append(model.get_recon(model.s_model).data.numpy())
             soln['r_data'].append(model.get_recon(model.s_data).data.numpy())
             soln['x_data'].append(x.data.numpy())
@@ -220,11 +293,11 @@ def get_timestamped_dir(load=False, base_dir=None):
     if base_dir is None:
         base_dir = 'tmp'
     if load:
-        tmp_files = glob(os.path.join(FILE_DIR, 'results', base_dir, '*'))
+        tmp_files = glob(os.path.join(FILE_DIR, 'results', base_dir, 'exp_*'))
         tmp_files.sort()
         dir_name = tmp_files[-1]
     else:
-        time_stamp = f'{time():.0f}'
+        time_stamp = f'exp_{time():.0f}'
         dir_name = os.path.join(FILE_DIR, 'results', base_dir, time_stamp)
         os.makedirs(dir_name)
     return dir_name
@@ -344,6 +417,8 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
             #_, S, _ = np.linalg.svd(A)
         if t in when_out:
             for n, p in model.named_parameters():
+                if n == 's_data':
+                    p = model.get_u(model.s_data)
                 soln[n].append(p.clone().data.cpu().numpy())
             soln['r_model'].append(model.get_recon(model.s_model).data.numpy())
             soln['r_data'].append(model.get_recon(model.s_data).data.numpy())
@@ -359,7 +434,7 @@ def train_mtsc(tmax, tau_x, model, solver, loader, t_start=0, n_soln=None, out_d
 
 class MTSCSolver:
     @classmethod
-    def load(cls, dir_path=None):
+    def from_dir(cls, dir_path=None):
         if dir_path is None:
             dir_path = get_timestamped_dir(load=True)
         elif not os.path.isdir(dir_path):
@@ -377,7 +452,6 @@ class MTSCSolver:
         self.trainer = trainer
         self.coupling = coupling
         self.dir_path = None
-
         if noise_cache > 0:
             self.solver.reset_noise(noise_cache=noise_cache)
     @property
@@ -415,29 +489,37 @@ class MTSCSolver:
             self.model.load_state_dict(checkpoint['model_sd'])
             self.solver.load_state_dict(checkpoint['solver_sd'])
         return checkpoint, t_load
+    def get_soln_name(self, new=False):
+        print(self.dir_path)
+        if self.dir_path is None:
+            self.dir_path = get_timestamped_dir(base_dir=self.base_dir)
+        print(f'Saving experiment to directory {self.dir_path}')
+        soln_name = os.path.join(self.dir_path, 'soln.h5')
+        #self.tmax = tmax
+        self.save_hyperparams()
+        if os.path.isfile(soln_name):
+            for n in range(1, 100):
+                latest_soln = soln_name
+                soln_name = os.path.join(self.dir_path, f'soln_{n}.h5')
+                if not os.path.isfile(soln_name):
+                    return False
+            else:
+                return soln_name if new else latest_soln
+        else:
+            assert new == True
+            return soln_name
     def start_new_soln(self, tmax, tstart=0, n_soln=None, t_save=None, soln_name=None, rand_tau_x=False):
         if t_save is None:
             t_save = tmax
         if soln_name is None:
-            if self.dir_path is None:
-                self.dir_path = get_timestamped_dir(base_dir=self.base_dir)
-            print(f'Saving experiment to directory {self.dir_path}')
-            name = os.path.join(self.dir_path, 'soln.h5')
-            self.tmax = tmax
-            self.save_hyperparams()
-            if os.path.isfile(name):
-                for n in range(1, 100):
-                    soln_name = os.path.join(self.dir_path, f'soln_{n}.h5')
-                    if not os.path.isfile(soln_name):
-                        break
-            else:
-                soln_name = name
+            soln_name = self.get_soln_name(new=True)
         soln_dict = self.trainer(tmax=tmax, t_start=tstart, loader=self.loader, tau_x=self.tau_x, model=self.model, solver=self.solver, n_soln=n_soln, out_dir=self.dir_path, t_save=t_save, alpha=self.alpha, coupling=self.coupling, asynch=rand_tau_x)
         soln = Solutions(soln_dict, f_name=soln_name, im_shape=self.im_shape)
         return soln
     def load_soln(self, f_name=None, auto_load=True):
         if f_name is None:
-            f_name = os.path.join(self.dir_path, 'soln.h5')
+            #f_name = os.path.join(self.dir_path, 'soln.h5')
+            f_name = self.get_soln_name(new=False)
         soln = Solutions.load(f_name)
         self.load_checkpoint()
         return soln
