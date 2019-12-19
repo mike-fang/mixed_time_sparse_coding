@@ -1,9 +1,8 @@
-import numpy as np
-import torch as th
+import inspect
 
-p = th.arange(10.)/10
-p = p[:, None]
+class Class:
+    def __init__(self, a, b, c=None, d=None):
+        self.params = locals() 
 
-where_load = th.zeros(10, 3).bernoulli_(p)
-print(p)
-print(where_load)
+c = Class(1, 2, 3, d=4)
+print({k:v for (k, v) in c.params.items() if isinstance(v, (int, float, bool)) })
