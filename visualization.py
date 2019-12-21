@@ -86,10 +86,12 @@ def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=Non
 
     if img_shape is not None:
         H, W = img_shape
-        n_frames_total, n_batch, _ = X.shape
-        n_frames_total, n_dict, _ = A.shape
+        print(A.shape)
+        n_frames_total, n_batch, n_dim = X.shape
+        n_frames_total, n_dim, n_dict = A.shape
         X = X.reshape((n_frames_total, n_batch, H, W))
         R = R.reshape((n_frames_total, n_batch, H, W))
+        A = np.transpose(A, (0, 2, 1))
         A = A.reshape((n_frames_total, n_dict, H, W))
 
     n_frames_total, n_X, W, H = X.shape
@@ -163,8 +165,8 @@ def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=Non
         plt.show()
 
 def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None, show_xmodel=False, show_smodel=False):
-    X = soln['x_data']
-    S = soln['s_data']
+    X = soln['x']
+    S = soln['s']
     t_steps, n_batch, n_dim = X.shape
     assert n_dim == 2
     _, n_dict, _ = S.shape
@@ -175,7 +177,7 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None, show_xmodel=False, sh
     # Create scatter plots for s and x
     sx, sy = [], []
     xx, xy = [], []
-    scat_r_data = ax.scatter(sx, sy, s=5, c='orange', label=rf'$A \mathbf {{u}}$ : Data Reconstruction')
+    scat_r_data = ax.scatter(sx, sy, s=5, c='b', label=rf'$A \mathbf {{u}}$ : Data Reconstruction')
     scat_x_data = ax.scatter(xx, xy, s=50, c='r', label=rf'$\mathbf {{x}}$ : Data')
 
     scat_r_model = ax.scatter(sx, sy, s=5, c='b', label=rf'$A \mathbf {{u}}$ : Model Reconstruction') if show_smodel else None
@@ -202,19 +204,20 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None, show_xmodel=False, sh
         ti = T[0]
         tf = T[-1] 
         A = soln['A'][idx1]
-        r_model = soln['r_model'][idx0:idx1]
-        r_data = soln['r_data'][idx0:idx1]
-        x_model = soln['x_model'][idx0:idx1].reshape((-1, n_dim))
-        x_data = soln['x_data'][idx0:idx1].reshape((-1, n_dim))
+        #r_model = soln['r_model'][idx0:idx1]
+        r_data = soln['r'][idx0:idx1]
+        #x_model = soln['x_model'][idx0:idx1].reshape((-1, n_dim))
+        x_data = soln['x'][idx0:idx1].reshape((-1, n_dim))
     
         if scat_r_model:
             scat_r_model.set_offsets(r_model.reshape((-1, 2)))
             scat_r_model.set_array(np.linspace(0, 1, len(T)))
             scat_r_model.cmap = plt.cm.get_cmap('Blues')
 
+
         scat_r_data.set_offsets(r_data.reshape((-1, 2)))
         scat_r_data.set_array(np.linspace(0, 1, len(T)))
-        scat_r_data.cmap = plt.cm.get_cmap('Oranges')
+        scat_r_data.cmap = plt.cm.get_cmap('Blues')
 
         scat_x_data.set_offsets(x_data)
         if scat_x_model:

@@ -53,7 +53,6 @@ def load_solver(dir_path, loader):
     return solver
 
 class CTSCModel(Module):
-    # // Init //
     def __init__(self, n_dim, n_dict, n_batch, positive=False, sigma=1, l1=1, pi=0.5):
         # Record params
         self.params = {k:v for (k, v) in locals().items() if isinstance(v, (int, float, bool))}
@@ -93,13 +92,29 @@ class CTSCModel(Module):
         return (self.A @ self.s).t()
     def energy(self, x):
         recon = 0.5 * ((self.r - x)**2).sum()
-        sparse = self.l1 * th.abs(self.u).sum()
+        sparse = th.abs(self.u).sum()
         return recon/self.sigma**2 + self.l1 * sparse
         return 0.5 * ((self.r - x)**2).sum()/self.sigma**2 + self.l1 * th.abs(self.u).sum()
     def forward(self, x):
         return self.energy(x)
 
 class CTSCSolver:
+    @classmethod
+    def load(cls, loader, dir_path=None, base_dir=None, load_ckpt=False):
+        dir_path = dir_path or get_timestamped_dir(load=True, base_dir=base_dir)
+        with open(os.path.join(dir_path, 'params.json'), 'r') as f:
+            params = yaml.safe_load(f)
+        model_params = params['model_params']
+        solver_params = params['solver_params']
+        model = CTSCModel(**model_params)
+        solver = CTSCSolver(model, loader, **solver_params)
+        if load_ckpt:
+            if isinstance(load_ckpt, str):
+                ckpt_name = load_ckpt
+            else:
+                ckpt_name = None
+            solver.load_checkpoint(dir_path, ckpt_name)
+        return solver
     def __init__(self, model, loader, tau_A, tau_u, tau_x, mu_A=0., mu_u=0., T_A=0., T_u=1., asynch=False):
         # Record params
         self.params = {k:v for (k, v) in locals().items() if isinstance(v, (int, float, bool))}
@@ -118,6 +133,7 @@ class CTSCSolver:
     def get_dir_path(self, base_dir, load=False):
         dir_path = get_timestamped_dir(load=load, base_dir=base_dir)
         if not load:
+            print(f'Experiment saved to {dir_path}')
             self.dir_path = dir_path
         return dir_path
     def load_batch_size(self, tspan):
@@ -129,7 +145,7 @@ class CTSCSolver:
         else:
             for n in np.unique(tspan // self.tau_x):
                 idx = np.argmin(np.abs(tspan - n*self.tau_x))
-                where_load[idx] = self.model.n_batch
+                where_load[idx] = 1
         return where_load
     def solve(self, tspan, normalize_A=True, out_N=None, out_T=None, save_N=None, save_T=None):
         # Get initial data x
@@ -150,7 +166,6 @@ class CTSCSolver:
 
         # Delta Ts in case dt != 1
         dtspan = get_dt(tspan)
-
         soln = defaultdict(list)
 
         # Iterate over tspan
@@ -162,7 +177,7 @@ class CTSCSolver:
             if batch_size > 0:
                 #TODO: remove this stupid switcharoo
                 x_ = x.clone()
-                x_.data[load_n[n].nonzero()] = loader(n_batch=batch_size).view(batch_size, 1, -1)
+                x_.data[load_n[n].nonzero()] = self.loader(n_batch=batch_size).view(batch_size, 1, -1)
                 x = x_
 
             # Optimizer step
@@ -205,17 +220,18 @@ class CTSCSolver:
         t_last = soln['t'][-1]
         #dir_path = get_timestamped_dir(base_dir=base_dir)
         self.save_hyperparams(dir_path)
-        self.save_checkpoint(dir_path, t_last)
+        self.save_checkpoint(t_last, dir_path=dir_path)
         soln_h5 = h5py.File(os.path.join(dir_path, 'soln.h5'), 'w')
         for k, v in soln.items():
             soln_h5.create_dataset(k, data=v)
-    def save_checkpoint(self, t, out_dir=None):
+    def save_checkpoint(self, t, dir_path=None):
         checkpoint = {
                 't': t,
                 'model_sd': self.model.state_dict(),
                 'optim_sd': self.optimizer.state_dict(),
                 }
-        path = os.path.join(out_dir, f'checkpoint_{t}.pth')
+        print(dir_path)
+        path = os.path.join(dir_path, f'checkpoint_{t:.0f}.pth')
         th.save(checkpoint, path)
         print(f'Checkpoint saved to {path}')
         return checkpoint
@@ -233,41 +249,51 @@ class CTSCSolver:
         self.model.load_state_dict(checkpoint['model_sd'])
         self.optimizer.load_state_dict(checkpoint['optim_sd'])
         return checkpoint, t_load
+
 if __name__ == '__main__':
     from loaders import BarsLoader
     from visualization import show_img_XRA
 
+    # Define loader
     H = W = 3
     N_BATCH = H + W
     PI = 0.5
     loader = BarsLoader(H, W, N_BATCH, p=PI)
 
-    model_params = dict(
-            n_dict = H * W,
-            n_dim = H * W,
-            n_batch = N_BATCH,
-            positive=True,
-            )
-    solver_params = dict(
-            tau_A = 5e3,
-            tau_u = 1e2,
-            tau_x = 1e3,
-            asynch=True,
-            )
+    mode = 'load'
+    if mode == 'load':
+        solver = CTSCSolver.load(loader, base_dir='bars', load_ckpt=True)
+        model = solver.model
+    else:
+        # Define model, solver
+        model_params = dict(
+                n_dict = H * W,
+                n_dim = H * W,
+                n_batch = N_BATCH,
+                positive=True,
+                )
+        solver_params = dict(
+                tau_A = 5e3,
+                tau_u = 1e2,
+                tau_x = 1e3,
+                asynch=True,
+                )
+        model = CTSCModel(**model_params)
+        solver = CTSCSolver(model, loader, **solver_params)
 
-    model = CTSCModel(**model_params)
-    solver = CTSCSolver(model, loader, **solver_params)
+        solver.get_dir_path('bars')
+        #dir_path = get_timestamped_dir(load=True, base_dir='bars')
+        #solver = load_solver(dir_path, loader)
+        #solver.load_checkpoint(dir_path)
 
-    dir_path = get_timestamped_dir(load=True, base_dir='bars')
-    solver = load_solver(dir_path, loader)
-    #solver.load_checkpoint(dir_path)
+        # Run solver
+        tspan = np.arange(1e3)
+        soln = solver.solve(tspan, out_N=1e2)
 
-    tspan = np.arange(1e3)
+        # Save and visualize soln
+        solver.save_soln(soln)
+        X = soln['x']
+        R = soln['r']
+        A = soln['A']
 
-    soln = solver.solve(tspan, out_N=1e2)
-    solver.save_soln(soln, 'bars')
-    X = soln['x']
-    R = soln['r']
-    A = soln['A']
-
-    show_img_XRA(X, R, A, img_shape=(H, W))
+        show_img_XRA(X, R, A, img_shape=(H, W))

@@ -42,7 +42,7 @@ class Loader:
             #batch += np.random.normal(0, self.sigma, size=batch.shape)
             batch += th.FloatTensor(*batch.shape).normal_(0, self.sigma)
         return batch
-    def __call__(self):
+    def __call__(self, n_batch):
         return self.get_batch()
     def __repr__(self):
         str_ = '<Data Loader>\n'
@@ -144,7 +144,8 @@ class SparseSampler():
             return X.T
         else:
             return X
-    def __call__(self, transposed=True):
+    def __call__(self, n_batch=None, transposed=True):
+        #TODO: implement n_batch
         return self.get_batch(transposed)
 
 class StarLoader(SparseSampler):
