@@ -5,12 +5,12 @@ import numpy as np
 
 
 class EulerMaruyama(Optimizer):
-    def __init__(self,  param_groups, dt=1, tau=required, mu=0, T=0, coupling=1, noise_cache=0):
+    def __init__(self,  param_groups, tau=required, mu=0, T=0, coupling=1, noise_cache=0):
         for n, d in enumerate(param_groups):
             tau = d['tau']
             if tau in [None, 0]:
                 param_groups.pop(n)
-        defaults = dict(dt=dt, tau=tau, mu=mu, coupling=coupling, T=T)
+        defaults = dict(tau=tau, mu=mu, coupling=coupling, T=T)
         super().__init__(param_groups, defaults)
         self.noise_cache = noise_cache
         if noise_cache:
@@ -36,14 +36,14 @@ class EulerMaruyama(Optimizer):
             if 'noise_scale' in param_state:
                 scale = param_state['noise_scale']
                 param_state['noise'].normal_(0, scale)
-    def step(self, closure):
+    def step(self, closure, dt=1):
         # Half-step x if there is mass
         for group in self.param_groups:
             mu = group['mu']
             if mu == 0:
                 continue
             tau = group['tau']
-            du =  group['dt'] / tau
+            du =  group['coupling'] * dt / tau
 
             for p in group['params']:
                 param_state = self.state[p]
@@ -58,7 +58,11 @@ class EulerMaruyama(Optimizer):
             mu = group['mu']
             tau = group['tau']
             T = group['T']
-            du =  group['coupling'] * group['dt'] / tau
+            du =  group['coupling'] * dt / tau
+
+            if group['params'][0].shape == (16, 8):
+            #    print(du)
+                pass
             if du == 0:
                 continue
 

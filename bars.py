@@ -22,15 +22,15 @@ model_params = dict(
         l1 = 0.01,
         )
 solver_params = dict(
-        tau_A = 1e2,
+        tau_A = 1e9,
         tau_u = 1e1,
-        tau_x = 1e2,
+        tau_x = 1e4,
         T_u = 0,
-        asynch=True,
+        asynch=False,
         )
 
 model = CTSCModel(**model_params)
-#model.A.data = loader.bases.t()
+model.A.data = loader.bases.t()
 solver = CTSCSolver(model, loader, **solver_params)
 
 solver.get_dir_path('bars')

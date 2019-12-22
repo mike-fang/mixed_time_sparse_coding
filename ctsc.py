@@ -93,8 +93,8 @@ class CTSCModel(Module):
     def energy(self, x):
         recon = 0.5 * ((self.r - x)**2).sum()
         sparse = th.abs(self.u).sum()
-        return recon/self.sigma**2 + self.l1 * sparse
-        return 0.5 * ((self.r - x)**2).sum()/self.sigma**2 + self.l1 * th.abs(self.u).sum()
+        energy = recon/self.sigma**2 + self.l1 * sparse
+        return energy
     def forward(self, x):
         return self.energy(x)
 
@@ -115,7 +115,18 @@ class CTSCSolver:
                 ckpt_name = None
             solver.load_checkpoint(dir_path, ckpt_name)
         return solver
-    def __init__(self, model, loader, tau_A, tau_u, tau_x, mu_A=0., mu_u=0., T_A=0., T_u=1., asynch=False):
+    @classmethod
+    def get_dsc(cls, n_A, n_s, eta_A, eta_s, **solver_params):
+        tau_x = n_s
+        t_max = n_A * n_s
+        tau_s = 1 / eta_s
+        tau_A = tau_x / eta_A
+
+    def __init__(self, model, loader, tau_A, tau_u, tau_x, mu_A=0., mu_u=0., T_A=0., T_u=1., asynch=False, spike_coupling=False, tau_A_correction=True):
+        self.spike_coupling  = spike_coupling
+        assert not asynch
+        self.asynch = asynch
+
         # Record params
         self.params = {k:v for (k, v) in locals().items() if isinstance(v, (int, float, bool))}
 
@@ -124,12 +135,15 @@ class CTSCSolver:
 
         self.loader = loader
         self.tau_x = tau_x
+
+        if tau_A_correction:
+            tau_A *= self.n_batch
         optim_params = [
                 {'params':[model.A], 'tau':tau_A, 'mu':mu_A, 'T':T_A},
                 {'params':[model.u], 'tau':tau_u, 'mu':mu_u, 'T':T_u},
                 ]
         self.optimizer = EulerMaruyama(optim_params)
-        self.asynch = asynch
+        self.pg_A, self.pg_u = self.optimizer.param_groups
     def get_dir_path(self, base_dir, load=False):
         dir_path = get_timestamped_dir(load=load, base_dir=base_dir)
         if not load:
@@ -143,11 +157,27 @@ class CTSCSolver:
             p = (dt/self.tau_x)[:, None]
             where_load.bernoulli_(p)
         else:
-            for n in np.unique(tspan // self.tau_x):
-                idx = np.argmin(np.abs(tspan - n*self.tau_x))
-                where_load[idx] = 1
+            load_idx = (tspan % self.tau_x == self.tau_x-1)
+            where_load[load_idx] = 1
         return where_load
-    def solve(self, tspan, normalize_A=True, out_N=None, out_T=None, save_N=None, save_T=None):
+    def step_A_only(self, closure, dt):
+        self.optimizer.zero_grad()
+        self.pg_A['coupling'] = self.tau_x
+        self.pg_u['coupling'] = 0
+        self.optimizer.step(closure, dt=dt)
+        self.pg_A['coupling'] = 0
+        self.pg_u['coupling'] = 1
+    def solve(self, tmax, normalize_A=True, out_N=None, out_T=None, save_N=None, save_T=None, callback_freq=None, callback_fn=None):
+        tspan = np.arange(tmax)
+
+        # Get time interval if number output/soln given
+        if save_N is not None:
+            assert save_T is None
+            save_T = tmax // save_N
+        if out_N is not None:
+            assert out_T is None
+            out_T = tmax // out_N
+
         # Get initial data x
         x = self.loader()
 
@@ -160,45 +190,60 @@ class CTSCSolver:
         # When to load new data
         load_n = self.load_batch_size(tspan)
 
-        # Where to save soln and checkpoint
-        soln_time = get_time_interval(tspan, N=out_N, dt=out_T)
-        ckpt_time = get_time_interval(tspan, N=save_N, dt=save_T)
-
         # Delta Ts in case dt != 1
         dtspan = get_dt(tspan)
         soln = defaultdict(list)
 
+        # Supress A if DSC
+        if self.spike_coupling:
+            self.pg_A['coupling'] = 0
+
         # Iterate over tspan
         for n, t in enumerate(tqdm(tspan)):
-            dt = dtspan[n]
+            #dt = dtspan[n]
+            #TODO: fix dt bullshit
+            dt = 1
+
+            # Optimizer step
+            self.optimizer.zero_grad()
+            self.optimizer.step(closure, dt=dt)
+
+            # Update again if DSC
+            batch_size = int(load_n[n].sum())
+            if self.spike_coupling and batch_size > 0:
+                self.step_A_only(closure, dt)
+
+            # Normalize dictionary if needed
+            if normalize_A:
+                self.model.A.data = self.model.A / self.model.A.norm(dim=0)
+            if batch_size > 0:
+                print(self.model.s)
+                print(self.model.A)
 
             # Load new batch asynchronously if necessary
-            batch_size = int(load_n[n].sum())
             if batch_size > 0:
                 #TODO: remove this stupid switcharoo
                 x_ = x.clone()
                 x_.data[load_n[n].nonzero()] = self.loader(n_batch=batch_size).view(batch_size, 1, -1)
                 x = x_
 
-            # Optimizer step
-            self.optimizer.zero_grad()
-            self.optimizer.step(closure)
-            # Normalize dictionary if needed
-            if normalize_A:
-                self.model.A.data = self.model.A / self.model.A.norm(dim=0)
+            # Call callback function
+            if callback_freq and (t % callback_freq == 0):
+                callback_fn(self.model)
 
             # Save Checkpoint
-            if ckpt_time is not None and ckpt_time[n]:
+            if save_T is not None and (t % save_T == 0):
                 self.save_checkpoint()
 
             # Save solution
-            if soln_time is not None and soln_time[n]:
+            if out_T is not None and (t % out_T == 0):
                 soln['r'].append(self.model.r.data.numpy())
                 soln['u'].append(self.model.u.data.numpy())
                 soln['s'].append(self.model.s.data.numpy())
                 soln['A'].append(self.model.A.data.numpy())
                 soln['x'].append(x.data.numpy())
                 soln['t'].append(t)
+
         if soln:
             for k, v in soln.items():
                 soln[k] = np.array(v)
@@ -260,7 +305,7 @@ if __name__ == '__main__':
     PI = 0.5
     loader = BarsLoader(H, W, N_BATCH, p=PI)
 
-    mode = 'load'
+    mode = 'new'
     if mode == 'load':
         solver = CTSCSolver.load(loader, base_dir='bars', load_ckpt=True)
         model = solver.model
@@ -271,12 +316,15 @@ if __name__ == '__main__':
                 n_dim = H * W,
                 n_batch = N_BATCH,
                 positive=True,
+                pi = 1,
                 )
         solver_params = dict(
-                tau_A = 5e3,
+                tau_A = 5e2,
                 tau_u = 1e2,
                 tau_x = 1e3,
-                asynch=True,
+                T_u = 0,
+                asynch=False,
+                spike_coupling=True,
                 )
         model = CTSCModel(**model_params)
         solver = CTSCSolver(model, loader, **solver_params)
@@ -287,7 +335,7 @@ if __name__ == '__main__':
         #solver.load_checkpoint(dir_path)
 
         # Run solver
-        tspan = np.arange(1e3)
+        tspan = np.arange(1e4)
         soln = solver.solve(tspan, out_N=1e2)
 
         # Save and visualize soln

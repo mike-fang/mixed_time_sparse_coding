@@ -119,7 +119,6 @@ def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=Non
     rows_total = rows_X + rows_A + rows_R
     n_cols = int(np.ceil(n_cols))
 
-
     # Make subplots
     fig = plt.figure(figsize=(12, 8))
     gs = fig.add_gridspec(rows_total, n_cols, hspace=.3)
@@ -147,9 +146,12 @@ def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=Non
 
     def update_im(imgs, n_imgs, img_plots, frame_n):
         im = imgs[frame_n * skip]
+        v_max = im.max()
+        v_min = im.min()
         for i in range(n_imgs):
+            img_plots[i].set_clim(v_min, v_max)
             img_plots[i].set_data(im[i])
-            img_plots[i].autoscale()
+            #img_plots[i].autoscale()
 
     def animate(n):
         update_im(X, n_X, plots_X, n)

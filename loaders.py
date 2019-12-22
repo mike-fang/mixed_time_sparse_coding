@@ -64,18 +64,21 @@ class StarLoader_(Loader):
         return X
 
 class BarsLoader:
-    def __init__(self, H, W, n_batch, p=0.1, positive=False):
+    def __init__(self, H, W, n_batch, p=0.1, positive=False, test=False):
         self.H = H
         self.W = W
         self.im_shape = (H, W)
         self.n_batch = n_batch
         self.p = p
         self.positive = positive
+        self.test = test
 
         self.set_bases()
     def reset(self):
         pass
-    def get_batch(self, reshape=False, n_batch=None):
+    def get_batch(self, reshape=False, n_batch=None, test=False):
+        if self.test:
+            test = True
         if n_batch is None:
             n_batch = self.n_batch
         S = th.Tensor(n_batch, self.W + self.H).bernoulli_(self.p)
@@ -83,7 +86,13 @@ class BarsLoader:
         if self.positive:
             multiplier -= 0.5
         S *= multiplier
+        if test:
+            d_min = min(n_batch, self.W + self.H)
+            S *= 0
+            S[:d_min, :d_min] = th.eye(d_min)
+
         batch = S @ self.bases
+
 
         if reshape:
             return batch.reshape((n_batch, self.H, self.W))
