@@ -13,7 +13,7 @@ PI = 0.3
 loader = BarsLoader(H, W, N_BATCH, p=PI, test=True)
 
 
-N_A = 10
+N_A = 2500
 N_S = 10
 eta_A = 0.1
 eta_S = 0.1
@@ -57,13 +57,10 @@ for n in tqdm(range(N_A)):
     E.backward()
     A.data.add_(-eta_A/N_BATCH, A.grad)
     A.data /= A.norm(dim=0)
-    print(s)
-    print(A)
 
 A = A.data.numpy()
 fig, axes = plt.subplots(nrows=2, ncols=4)
 axes = [a for row in axes for a in row]
 for n, ax in enumerate(axes):
     ax.imshow(A[:, n].reshape(H, W))
-#plt.show()
-
+plt.show()
