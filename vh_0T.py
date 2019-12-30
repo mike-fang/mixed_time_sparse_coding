@@ -1,26 +1,27 @@
 import torch as th
 import numpy as np
 from ctsc import *
-from loaders import BarsLoader
+from loaders import VanHaterenSampler
 from visualization import show_img_XRA
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
 
 # Define loader
-H = W = 4
+H = W = 8
 N_DIM = H * W
-N_BATCH = H * W
-N_DICT = H + W
+N_BATCH = int(N_DIM // 2)
+OC = 1.
+N_DICT = int(OC * N_DIM)
 PI = 0.3
-loader = BarsLoader(H, W, N_BATCH, p=PI)
+loader = VanHaterenSampler(H, W, N_BATCH)
 
 # DSC params
-N_A = 1000
+N_A = 100
 N_S = 250
-ETA_A = 0.1
+ETA_A = 0.2
 ETA_S = 0.1
 
-# model params
+# Model params
 model_params = dict(
         n_dict=N_DICT,
         n_dim=N_DIM,
@@ -31,10 +32,10 @@ model_params = dict(
         sigma=1.0,
         )
 
-EXP = '1T'
+EXP = 'dsc'
 LOAD = False
 assert EXP in ['dsc', 'ctsc', 'asynch', '1T']
-base_dir = f'bars_{EXP}'
+base_dir = f'vh_{EXP}'
 
 # Define model, solver
 model = CTSCModel(**model_params)
@@ -67,3 +68,4 @@ R = soln['r'][:]
 A = soln['A'][:]
 
 show_img_XRA(X, R, A, n_frames=1e2, img_shape=(H, W))
+

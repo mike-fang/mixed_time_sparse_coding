@@ -15,10 +15,10 @@ PI = 0.3
 loader = BarsLoader(H, W, N_BATCH, p=PI)
 
 # DSC params
-N_A = 1000
+N_A = 100
 N_S = 250
 ETA_A = 0.1
-ETA_S = 0.1
+ETA_S = 0.2
 
 # model params
 model_params = dict(
@@ -27,7 +27,7 @@ model_params = dict(
         n_batch=N_BATCH,
         positive=True,
         pi=1.,
-        l1=1,
+        l1=0.2,
         sigma=1.0,
         )
 
@@ -67,3 +67,4 @@ R = soln['r'][:]
 A = soln['A'][:]
 
 show_img_XRA(X, R, A, n_frames=1e2, img_shape=(H, W))
+

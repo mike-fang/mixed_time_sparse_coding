@@ -86,7 +86,6 @@ def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=Non
 
     if img_shape is not None:
         H, W = img_shape
-        print(A.shape)
         n_frames_total, n_batch, n_dim = X.shape
         n_frames_total, n_dim, n_dict = A.shape
         X = X.reshape((n_frames_total, n_batch, H, W))

@@ -149,6 +149,9 @@ class CTSCSolver:
                 spike_coupling=True,
                 t_max=t_max,
                 )
+        print('Converting to time constants...')
+        for k, v in solver_params.items():
+            print(f'{k} : {v}')
         if return_params:
             return solver_params
 
