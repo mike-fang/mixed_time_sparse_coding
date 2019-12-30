@@ -1,9 +1,4 @@
-import torch as th
-from torch.nn import Parameter
-
-
-U = Parameter(th.tensor(5.))
-X = (U.clone().data.numpy())
-print(X)
-U.data += 1
-print(X)
+import numpy as np
+bins = np.arange(100.)
+bins = np.insert(bins, 1, 1e-5)
+print(bins)

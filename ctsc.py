@@ -51,6 +51,29 @@ def load_solver(dir_path):
     model = CTSCModel(**model_params)
     solver = CTSCSolver(model, **solver_params)
     return solver
+def dsc_solver_param(n_A, n_s, eta_A, eta_s):
+    tau_x = n_s
+    t_max = n_A * n_s
+    tau_s = 1 / eta_s
+    tau_A = n_s / eta_A
+
+    solver_params = dict(
+            tau_A = tau_A,
+            tau_u = tau_s,
+            tau_x = tau_x,
+            T_u = 0.,
+            asynch=False,
+            spike_coupling=True,
+            t_max=t_max,
+            )
+    print('Converting to time constants...')
+    for k, v in solver_params.items():
+        print(f'{k} : {v}')
+    return solver_params
+
+    solver = cls(model, **solver_params)
+    solver.t_max = t_max
+    return solver
 
 class CTSCModel(Module):
     def __init__(self, n_dim, n_dict, n_batch, positive=False, sigma=1, l1=1, pi=0.5):
@@ -91,28 +114,28 @@ class CTSCModel(Module):
     def r(self):
         return (self.A @ self.s).t()
     def energy(self, x, A=None, u=None, return_recon=False):
-        if not isinstance(x, th.Tensor):
-            x = th.tensor(x)
-        A0 = u0 = None
-        if A is not None:
-            A0 = self.A.data
-            self.A.data = th.tensor(A)
-        if u is not None:
-            u0 = self.u.data
-            self.u.data = th.tensor(u)
-        recon = 0.5 * ((self.r - x)**2).sum()
-        sparse = th.abs(self.u).sum()
-        energy = recon/self.sigma**2 + self.l1 * sparse
+            if not isinstance(x, th.Tensor):
+                x = th.tensor(x)
+            A0 = u0 = None
+            if A is not None:
+                A0 = self.A.data
+                self.A.data = th.tensor(A)
+            if u is not None:
+                u0 = self.u.data
+                self.u.data = th.tensor(u)
+            recon = 0.5 * ((self.r - x)**2).sum()
+            sparse = th.abs(self.u).sum()
+            energy = recon/self.sigma**2 + self.l1 * sparse
 
-        if A0 is not None:
-            self.A.data = A0
-        if u0 is not None:
-            self.u.data = u0
+            if A0 is not None:
+                self.A.data = A0
+            if u0 is not None:
+                self.u.data = u0
 
-        if return_recon:
-            return energy, recon/self.sigma**2
-        else:
-            return energy
+            if return_recon:
+                return energy, recon/self.sigma**2
+            else:
+                return energy
     def forward(self, x):
         return self.energy(x)
 

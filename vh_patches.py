@@ -17,11 +17,11 @@ loader = VanHaterenSampler(H, W, N_BATCH)
 
 # DSC params
 N_A = 100
-N_S = 250
+N_S = 1000
 ETA_A = 0.2
 ETA_S = 0.1
 
-# Model params
+# Model, solver params
 model_params = dict(
         n_dict=N_DICT,
         n_dim=N_DIM,
@@ -32,14 +32,14 @@ model_params = dict(
         sigma=1.0,
         )
 
-EXP = 'dsc'
+solver_params = dsc_solver_param(n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S)
+
+EXP = 'asynch'
 LOAD = False
 assert EXP in ['dsc', 'ctsc', 'asynch', '1T']
 base_dir = f'vh_{EXP}'
 
 # Define model, solver
-model = CTSCModel(**model_params)
-solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S, return_params=True)
 if EXP == 'dsc':
     pass
 elif EXP == 'ctsc':
@@ -52,6 +52,8 @@ elif EXP == '1T':
     solver_params['asynch'] = True
     solver_params['T_u'] = 1
     model.pi = PI
+model = CTSCModel(**model_params)
+solver = CTSCSolver(model, **solver_params)
 
 # Load or make soln
 if LOAD:
