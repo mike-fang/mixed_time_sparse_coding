@@ -8,9 +8,11 @@ IDEAS:
 
 
 TODO:
-- Make img visualization better
+- Named experiment dir
+- Get hist for fixed dict and fixed data and wrong data
+V Make img visualization better
 V Async loading of X
-- Check out L0 sprasity for DSC
+V Check out L0 sprasity for DSC
 - Add exp falloff to MTSC
 - Add noise to DSC
 - Precondition s, at least when simulating the physical system.

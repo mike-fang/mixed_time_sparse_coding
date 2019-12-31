@@ -103,11 +103,11 @@ def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=Non
 
     n_total = n_X + n_R + n_A
 
-    n_frames = int(n_frames)
     if n_frames is None:
         skip = 1
         n_frames = n_frames_total
     else:
+        n_frames = int(n_frames)
         skip = max(1, n_frames_total // n_frames)
 
 

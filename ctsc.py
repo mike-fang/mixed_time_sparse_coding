@@ -204,8 +204,15 @@ class CTSCSolver:
                 ]
         self.optimizer = EulerMaruyama(optim_params)
         self.pg_A, self.pg_u = self.optimizer.param_groups
-    def get_dir_path(self, base_dir, load=False):
-        dir_path = get_timestamped_dir(load=load, base_dir=base_dir)
+    def get_dir_path(self, base_dir, load=False, name=None, overwrite=False):
+        if name is None:
+            dir_path = get_timestamped_dir(load=load, base_dir=base_dir)
+        else:
+            dir_path = os.path.join(FILE_DIR, 'results', base_dir, name)
+            if not os.path.isdir(dir_path):
+                os.makedirs(dir_path)
+            elif (not overwrite) and (not load):
+                raise Exception('Directory already exist')
         if not load:
             print(f'Experiment saved to {dir_path}')
             self.dir_path = dir_path
@@ -236,7 +243,7 @@ class CTSCSolver:
             save_T = tmax // save_N
         if out_N is not None:
             assert out_T is None
-            out_T = tmax // out_N
+            out_T = max(tmax // out_N, 1)
 
         # Get initial data x
         x = loader()
@@ -338,7 +345,7 @@ class CTSCSolver:
         th.save(checkpoint, path)
         print(f'Checkpoint saved to {path}')
         return checkpoint
-    def load_checkpoint(self, dir_path, chp_name=None):
+    def load_checkpoint(self, dir_path, load_optim=False, chp_name=None):
         if chp_name in [None, 'last', 'end']:
             checkpoints = glob(os.path.join(dir_path, 'checkpoint_*.pth'))
             checkpoints.sort()
@@ -350,67 +357,57 @@ class CTSCSolver:
         self.t_load = t_load
 
         self.model.load_state_dict(checkpoint['model_sd'])
-        self.optimizer.load_state_dict(checkpoint['optim_sd'])
+        if load_optim:
+            self.optimizer.load_state_dict(checkpoint['optim_sd'])
         return checkpoint, t_load
 
 if __name__ == '__main__':
-    from loaders import BarsLoader
+    from loaders import BarsLoader, VanHaterenSampler
     from visualization import show_img_XRA
 
     # Define loader
-    H = W = 4
-    N_BATCH = H + W
-    PI = 0.5
-    loader = BarsLoader(H, W, N_BATCH, p=PI)
-    EXP_NAME = 'bars_asynch'
+    H = W = 8
+    N_DIM = H * W
+    N_BATCH = int(N_DIM // 2)
+    OC = 1.
+    N_DICT = int(OC * N_DIM)
+    PI = 0.3
+    loader = VanHaterenSampler(H, W, N_BATCH)
 
-    mode = 'soln'
-    if mode == 'load':
-        solver = CTSCSolver.load(loader, base_dir='bars', load_ckpt=True)
-        model = solver.model
-    elif mode == 'soln':
-        dir_path = get_timestamped_dir(load=True, base_dir=EXP_NAME)
-        soln = h5py.File(os.path.join(dir_path, 'soln.h5'))
-        for n in soln:
-            print(n)
-        X = soln['x'][:]
-        R = soln['r'][:]
-        A = soln['A'][:]
+    # DSC params
+    N_A = 25
+    N_S = 100
+    ETA_A = 0.1
+    ETA_S = 0.1
 
-        show_img_XRA(X, R, A, img_shape=(H, W), n_frames=100)
-    else:
-        # Define model, solver
-        model_params = dict(
-                n_dict = H * W,
-                n_dim = H * W,
-                n_batch = N_BATCH,
-                positive=True,
-                pi = 1,
-                )
-        solver_params = dict(
-                tau_A = 5e2,
-                tau_u = 1e2,
-                tau_x = 1e3,
-                T_u = 0,
-                asynch=False,
-                spike_coupling=True,
-                )
-        model = CTSCModel(**model_params)
-        solver = CTSCSolver(model, loader, **solver_params)
+    # Define model, solver
+    model_params = dict(
+            n_dict = H * W,
+            n_dim = H * W,
+            n_batch = N_BATCH,
+            positive=True,
+            pi = 1,
+            )
+    solver_params = dsc_solver_param(n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S)
 
-        solver.get_dir_path('bars')
-        #dir_path = get_timestamped_dir(load=True, base_dir='bars')
-        #solver = load_solver(dir_path, loader)
-        #solver.load_checkpoint(dir_path)
+    model = CTSCModel(**model_params)
+    solver = CTSCSolver(model, **solver_params)
 
-        # Run solver
-        tspan = np.arange(1e4)
-        soln = solver.solve(tspan, out_N=1e2)
-
-        # Save and visualize soln
+    try:
+        solver.get_dir_path('vh_test', name='trained_dict', overwrite=False)
+        soln = solver.solve(loader, out_N=1e4, save_N=1)
         solver.save_soln(soln)
-        X = soln['x']
-        R = soln['r']
-        A = soln['A']
+    except:
+        dir_path = os.path.join(FILE_DIR, 'results', 'vh_test', 'trained_dict')
+        solver_params['tau_A'] = 1e9
+        solver = CTSCSolver(model, **solver_params)
+        solver.load_checkpoint(dir_path=dir_path)
+        solver.get_dir_path('vh_test', name='infer', overwrite=True)
+        soln = solver.solve(loader, out_N=1e3, save_N=1)
 
-        show_img_XRA(X, R, A, img_shape=(H, W))
+
+    X = soln['x'][:]
+    R = soln['r'][:]
+    A = soln['A'][:]
+
+    show_img_XRA(X, R, A, n_frames=1e2, img_shape=(H, W))

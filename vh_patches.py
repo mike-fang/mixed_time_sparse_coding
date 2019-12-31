@@ -6,68 +6,74 @@ from visualization import show_img_XRA
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
 
-# Define loader
-H = W = 8
-N_DIM = H * W
-N_BATCH = int(N_DIM // 2)
-OC = 1.
-N_DICT = int(OC * N_DIM)
-PI = 0.3
-loader = VanHaterenSampler(H, W, N_BATCH)
+def vh_loader_model_solver(dim, batch_frac, dict_oc, pi, exp, dsc_params):
+    H = W = dim
+    N_DIM = H * W
+    N_BATCH = int(N_DIM * batch_frac)
+    N_DICT = int(dict_oc * N_DIM)
+    loader = VanHaterenSampler(H, W, N_BATCH)
+    if exp != '1T':
+        pi = 1
 
-# DSC params
-N_A = 100
-N_S = 1000
-ETA_A = 0.2
-ETA_S = 0.1
+    model_params = dict(
+            n_dict=N_DICT,
+            n_dim=N_DIM,
+            n_batch=N_BATCH,
+            positive=True,
+            pi=pi,
+            l1=1,
+            sigma=1.0,
+            )
+    solver_params = dsc_solver_param(**dsc_params)
+    if exp == 'dsc':
+        pass
+    elif exp == 'ctsc':
+        solver_params['spike_coupling'] = False
+    elif exp == 'asynch':
+        solver_params['spike_coupling'] = False
+        solver_params['asynch'] = True
+    elif exp == '1T':
+        solver_params['spike_coupling'] = False
+        solver_params['asynch'] = True
+        solver_params['T_u'] = 1
+    return loader, model_params, solver_params
 
-# Model, solver params
-model_params = dict(
-        n_dict=N_DICT,
-        n_dim=N_DIM,
-        n_batch=N_BATCH,
-        positive=True,
-        pi=1.,
-        l1=1,
-        sigma=1.0,
-        )
+if __name__ == '__main__':
+    # DSC params
+    dsc_params = dict(
+        n_A = 250,
+        n_s = 100,
+        eta_A = 0.1,
+        eta_s = 0.1,
+    )
+    DIM = 8
+    OC = 1
 
-solver_params = dsc_solver_param(n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S)
+    PI = 0.3
 
-EXP = 'asynch'
-LOAD = False
-assert EXP in ['dsc', 'ctsc', 'asynch', '1T']
-base_dir = f'vh_{EXP}'
+    EXP = '1T'
+    LOAD = False
+    assert EXP in ['dsc', 'ctsc', 'asynch', '1T']
+    base_dir = f'vh_{EXP}'
 
-# Define model, solver
-if EXP == 'dsc':
-    pass
-elif EXP == 'ctsc':
-    solver_params['spike_coupling'] = False
-elif EXP == 'asynch':
-    solver_params['spike_coupling'] = False
-    solver_params['asynch'] = True
-elif EXP == '1T':
-    solver_params['spike_coupling'] = False
-    solver_params['asynch'] = True
-    solver_params['T_u'] = 1
-    model.pi = PI
-model = CTSCModel(**model_params)
-solver = CTSCSolver(model, **solver_params)
+    loader, model_params, solver_params = vh_loader_model_solver(dim=DIM, batch_frac=0.5, dict_oc=OC, dsc_params=dsc_params, pi=PI, exp=EXP)
 
-# Load or make soln
-if LOAD:
-    dir_path = get_timestamped_dir(load=True, base_dir=base_dir)
-    soln = h5py.File(os.path.join(dir_path, 'soln.h5'))
-else:
+    # Define model, solver
+    model = CTSCModel(**model_params)
     solver = CTSCSolver(model, **solver_params)
-    solver.get_dir_path(base_dir)
-    soln = solver.solve(loader, out_N=1e4, save_N=1)
-    solver.save_soln(soln)
 
-X = soln['x'][:]
-R = soln['r'][:]
-A = soln['A'][:]
+    # Load or make soln
+    if LOAD:
+        dir_path = get_timestamped_dir(load=True, base_dir=base_dir)
+        soln = h5py.File(os.path.join(dir_path, 'soln.h5'))
+    else:
+        solver = CTSCSolver(model, **solver_params)
+        solver.get_dir_path(base_dir)
+        soln = solver.solve(loader, out_N=1e4, save_N=1)
+        solver.save_soln(soln)
 
-show_img_XRA(X, R, A, n_frames=1e2, img_shape=(H, W))
+    X = soln['x'][:]
+    R = soln['r'][:]
+    A = soln['A'][:]
 
+    show_img_XRA(X, R, A, n_frames=1e2, img_shape=(DIM, DIM))
