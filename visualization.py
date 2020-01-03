@@ -76,7 +76,7 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
     else:
         plt.show()
 
-def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=None):
+def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=None, N_batch=None, N_dict=None):
     """
         params: The parameter to visualize, should be reshaped to be (n_frame_total, n_sparse_total, n_dim1, n_dim2).
         n_frames: Number of frames to be shown in animation, must be smaller than n_frame_total.
@@ -92,6 +92,12 @@ def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=Non
         R = R.reshape((n_frames_total, n_batch, H, W))
         A = np.transpose(A, (0, 2, 1))
         A = A.reshape((n_frames_total, n_dict, H, W))
+
+    if N_batch is not None:
+        X = X[:, :N_batch, :, :]
+        R = R[:, :N_batch, :, :]
+    if N_dict is not None:
+        A = A[:, :N_dict, :, :]
 
     n_frames_total, n_X, W, H = X.shape
     n_frames_total_R, n_R, W_R, H_R = R.shape

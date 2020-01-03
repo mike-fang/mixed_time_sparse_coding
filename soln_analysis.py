@@ -10,13 +10,20 @@ class SolnAnalysis:
         self.solver = load_solver(dir_path)
         self.model = self.solver.model
         self.set_soln()
-    def set_soln(self, skip=1, offset=0):
+    def set_soln(self, skip=1, offset=0, batch_idx=None):
         offset = offset % skip
         soln = h5py.File(os.path.join(self.dir_path, 'soln.h5'))
         self.soln = {}
         for n in soln:
             skip = int(skip)
-            self.soln[n] = soln[n][::skip]
+            self.soln[n] = soln[n][offset::skip]
+            if batch_idx is not None:
+                if n == 't':
+                    pass
+                elif n in ['r', 'x']:
+                    self.soln[n] = self.soln[n][:, batch_idx:batch_idx+1, :]
+                else:
+                    self.soln[n] = self.soln[n][:, :, batch_idx:batch_idx+1]
     def energy(self, skip=1):
         X_soln = self.soln['x'][::skip]
         U_soln = self.soln['u'][::skip]
@@ -52,7 +59,7 @@ class SolnAnalysis:
             mean_nz[-smoothing:] = mean_nz[-smoothing]
             mean_nz[:smoothing] = mean_nz[smoothing]
         return mean_nz
-    def plot_nz_hist(self, last_frac=0.1, eps_s=1e-5, eps_p=1e-3, log=True, n_bins=100, ylim=None):
+    def plot_nz_hist(self, title='', last_frac=0.1, s_max=3, eps_p=1e-5, log=True, n_bins=100, ylim=None):
         pi = self.model.pi
         l1 = self.model.l1
         u0 = -np.log(pi) / l1
@@ -62,31 +69,25 @@ class SolnAnalysis:
         S_converged = S_soln[-int(N_S*last_frac):].flatten()
 
         l0_sparsity = (S_converged == 0).mean()
-        print(l0_sparsity)
 
-        hist = np.histogram(S_converged.flatten(), density=True, bins=n_bins)
-        if eps_p is not None:
-            trim_idx = (hist[0] < eps_p).argmax()
-        else:
-            trim_idx = None
-        bins = hist[1][:trim_idx]
-        bins = np.insert(bins, 1, eps_s)
-        plt.hist(S_converged.flatten(), bins=bins, density=True, fc='grey', ec='black', label='Emperical Distr.')
+        bins = np.linspace(0, s_max / l1)
+        bins = np.insert(bins, 1, eps_p)
+        plt.hist(S_converged.flatten(), bins=bins, density=True, fc='grey', ec='black', label='Prob. Distr.')
         prob_expected = l1 * np.exp(-l1 * (bins + u0))
         plt.plot(bins, prob_expected, 'r--', label=r'$P_S(s) = \frac{\pi}{\lambda}e^{- \lambda \cdot s}$')
         if log:
             plt.yscale('log')
         if ylim == 'auto':
-            plt.ylim(eps_p, prob_expected[0] * 1.1)
+            plt.ylim(0, 1.2 * l1 * pi)
         else:
             plt.ylim(ylim)
-        plt.xlim(eps_s, bins[-1])
-        plt.ylabel('Prob. Density')
-        plt.xlabel('Value')
-        plt.title('Ditribution of Nonzero Coefficients')
+        plt.xlim(eps_p, bins[-1])
+        plt.ylabel(rf'Distr. of Nonzero Coefficients')
+        plt.xlabel(rf'Coeff. Value ($s$); Emperical $P(s > 0) = {1-l0_sparsity:.2f}$')
+
+        title += rf' $(\pi = {pi:.2f}, \lambda_1 = {l1:.2f})$'
+        plt.title(title)
         plt.legend()
-
-
 
 if __name__ == '__main__':
     dir_path = get_timestamped_dir(load=True, base_dir='bars_dsc')

@@ -21,7 +21,7 @@ def vh_loader_model_solver(dim, batch_frac, dict_oc, pi, exp, dsc_params):
             n_batch=N_BATCH,
             positive=True,
             pi=pi,
-            l1=1,
+            l1=1.5,
             sigma=1.0,
             )
     solver_params = dsc_solver_param(**dsc_params)
@@ -41,20 +41,20 @@ def vh_loader_model_solver(dim, batch_frac, dict_oc, pi, exp, dsc_params):
 if __name__ == '__main__':
     # DSC params
     dsc_params = dict(
-        n_A = 250,
-        n_s = 100,
-        eta_A = 0.1,
+        n_A = 4000,
+        n_s = 50,
+        eta_A = 0.02,
         eta_s = 0.1,
     )
     DIM = 8
-    OC = 1
+    OC = 2
 
-    PI = 0.3
+    PI = 0.05
 
     EXP = '1T'
     LOAD = False
     assert EXP in ['dsc', 'ctsc', 'asynch', '1T']
-    base_dir = f'vh_{EXP}'
+    base_dir = f'vh_dim_{DIM}_{EXP}'
 
     loader, model_params, solver_params = vh_loader_model_solver(dim=DIM, batch_frac=0.5, dict_oc=OC, dsc_params=dsc_params, pi=PI, exp=EXP)
 
@@ -68,7 +68,7 @@ if __name__ == '__main__':
         soln = h5py.File(os.path.join(dir_path, 'soln.h5'))
     else:
         solver = CTSCSolver(model, **solver_params)
-        solver.get_dir_path(base_dir)
+        dir_path = solver.get_dir_path(base_dir)
         soln = solver.solve(loader, out_N=1e4, save_N=1)
         solver.save_soln(soln)
 
@@ -76,4 +76,5 @@ if __name__ == '__main__':
     R = soln['r'][:]
     A = soln['A'][:]
 
-    show_img_XRA(X, R, A, n_frames=1e2, img_shape=(DIM, DIM))
+    out_path = os.path.join(dir_path, 'evol.mp4')
+    show_img_XRA(X, R, A, n_frames=1e2, img_shape=(DIM, DIM), out_file=out_path)

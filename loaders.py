@@ -225,6 +225,49 @@ class VanHaterenSampler():
         else:
             return self.sample_buffer(n_batch)
 
+class GaussainSampler():
+    def __init__(self, H, W, n_batch, sigma=1, buffer_size=0, flatten=True, torch=True):
+        self.sigma = sigma
+        self.H = H
+        self.W = W
+        self.n_batch = n_batch
+        self.flatten = flatten 
+        self.torch = torch
+        self.buffer = int(buffer_size)
+        if self.buffer > 0:
+            assert self.buffer > n_batch
+            self.reset_buffer()
+    def reset_buffer(self):
+        self.buff_batch = self.sample(flatten=self.flatten, n_batch=self.buffer)
+        self.buff_idx = 0
+    def sample_buffer(self, n_batch):
+        end_idx = self.buff_idx + n_batch
+        if end_idx > self.buffer:
+            self.reset_buffer
+        buff = self.buff_batch[self.buff_idx: end_idx]
+        self.buff_idx += n_batch
+        return buff
+    def sample(self, n_batch=None, flatten=None):
+        if n_batch is None:
+            n_batch = self.n_batch
+        if flatten is None:
+            flatten = self.flatten
+
+        sample_arr = np.random.normal(0, scale=self.sigma, size=(n_batch, self.W, self.H))
+
+        if flatten:
+            sample_arr = sample_arr.reshape((n_batch, -1))
+        if self.torch:
+            sample_arr = th.tensor(sample_arr).float()
+        return sample_arr
+    def __call__(self, n_batch=None):
+        if n_batch is None:
+            n_batch = self.n_batch
+        if self.buffer == 0:
+            return self.sample(flatten=self.flatten, n_batch=n_batch)
+        else:
+            return self.sample_buffer(n_batch)
+
 if __name__ == '__main__':
     H = W = 16
     n_batch = 16
