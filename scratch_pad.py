@@ -1,6 +1,15 @@
 import numpy as np
-bins = np.arange(100.)
+import matplotlib.pylab as plt
 
-print(
-        list(range(-50, 50))
-        )
+
+u = np.linspace(-2, 2, 100)
+
+u0 = 1.5
+def f(u):
+    where_thresh = np.abs(u) <= u0
+    s = np.zeros_like(u)
+    s[~where_thresh] = u[~where_thresh] - u0 * np.sign(u[~where_thresh])
+    return s
+
+plt.plot(u, f(u))
+plt.show()
