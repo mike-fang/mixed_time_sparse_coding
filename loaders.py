@@ -64,7 +64,7 @@ class StarLoader_(Loader):
         return X
 
 class BarsLoader:
-    def __init__(self, H, W, n_batch, p=0.1, positive=False, test=False):
+    def __init__(self, H, W, n_batch, p=0.1, positive=False, test=False, numpy=False):
         self.H = H
         self.W = W
         self.im_shape = (H, W)
@@ -72,6 +72,7 @@ class BarsLoader:
         self.p = p
         self.positive = positive
         self.test = test
+        self.numpy = numpy
 
         self.set_bases()
     def reset(self):
@@ -93,6 +94,8 @@ class BarsLoader:
 
         batch = S @ self.bases
 
+        if self.numpy:
+            batch = np.array(batch)
 
         if reshape:
             return batch.reshape((n_batch, self.H, self.W))

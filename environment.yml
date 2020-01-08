@@ -6,8 +6,5 @@ dependencies:
     - pytorch::pytorch
     - matplotlib
     - h5py
-    - pip
-    - pip:
-        -sdeint
-    - conda-for::ffmpeg
-
+    - scipy
+    - pyyaml
