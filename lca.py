@@ -4,10 +4,23 @@ from tqdm import tqdm
 import matplotlib.pylab as plt
 from ctsc import CTSCSolver
 from collections import defaultdict
+import h5py
+import os.path
+import yaml
 
+def load_lca_solver(dir_path):
+    with open(os.path.join(dir_path, 'params.yaml'), 'r') as f:
+        params = yaml.safe_load(f)
+    model_params = params['model_params']
+    print(model_params)
+    solver_params = params['solver_params']
+    model = LCAModel(**model_params)
+    solver = LCASolver(model, **solver_params)
+    return solver
 
-class LCA:
+class LCAModel:
     def __init__(self, n_dim, n_dict, n_batch, u0=1, positive=True):
+        self.params = {k:v for (k, v) in locals().items() if isinstance(v, (int, float, bool))}
         self.n_dim = n_dim
         self.n_dict = n_dict
         self.n_batch = n_batch
@@ -105,6 +118,15 @@ class LCASolver(CTSCSolver):
             return soln
         else:
             return None
+    def save_soln(self, soln, dir_path=None):
+        if dir_path is None:
+            dir_path = self.dir_path
+        t_last = soln['t'][-1]
+        #dir_path = get_timestamped_dir(base_dir=base_dir)
+        self.save_hyperparams(dir_path)
+        soln_h5 = h5py.File(os.path.join(dir_path, 'soln.h5'), 'w')
+        for k, v in soln.items():
+            soln_h5.create_dataset(k, data=v)
 
 if __name__ == '__main__':
 
@@ -123,9 +145,11 @@ if __name__ == '__main__':
 
     U0 = 0.20
 
-    lca = LCA(n_dim=N_DIM, n_dict=N_DICT, n_batch=N_BATCH, u0=U0, positive=True)
-    lca_solver = LCASolver(lca, N_A, N_S, eta_A, eta_S)
-    soln = lca_solver.solve(loader, out_N=1e3)
+    lca = LCAModel(n_dim=N_DIM, n_dict=N_DICT, n_batch=N_BATCH, u0=U0, positive=True)
+    solver = LCASolver(lca, N_A, N_S, eta_A, eta_S)
+    solver.get_dir_path('bars_lca')
+    soln = solver.solve(loader, out_N=1e3)
+    solver.save_soln(soln)
     
     A = soln['A'][-1]
     fig, axes = plt.subplots(nrows=4, ncols=4)

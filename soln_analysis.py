@@ -1,13 +1,18 @@
 from ctsc import *
+from lca import load_lca_solver
+
 import numpy as np
 import torch as th
 import h5py
 import matplotlib.pylab as plt
 
 class SolnAnalysis:
-    def __init__(self, dir_path):
+    def __init__(self, dir_path, lca=False):
         self.dir_path = dir_path
-        self.solver = load_solver(dir_path)
+        if lca:
+            self.solver = load_lca_solver(dir_path)
+        else:
+            self.solver = load_solver(dir_path)
         self.model = self.solver.model
         self.set_soln()
     def set_soln(self, skip=1, offset=0, batch_idx=None):
@@ -33,20 +38,6 @@ class SolnAnalysis:
         recon = np.zeros_like(time)
         for n, (A, u, x) in enumerate(zip(A_soln, U_soln, X_soln)):
             energy[n], recon[n] = self.model.energy(x, A=A, u=u, return_recon=True)
-
-
-        return time, energy, recon
-    def energy(self, skip=1):
-        X_soln = self.soln['x'][::skip]
-        U_soln = self.soln['u'][::skip]
-        A_soln = self.soln['A'][::skip]
-        time = self.soln['t'][::skip]
-        energy = np.zeros_like(time)
-        recon = np.zeros_like(time)
-        for n, (A, u, x) in enumerate(zip(A_soln, U_soln, X_soln)):
-            energy[n], recon[n] = self.model.energy(x, A=A, u=u, return_recon=True)
-
-
         return time, energy, recon
     def mean_nz(self, smoothing=1):
         S_soln = self.soln['s'][:]

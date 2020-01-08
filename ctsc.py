@@ -47,6 +47,7 @@ def load_solver(dir_path):
     with open(os.path.join(dir_path, 'params.yaml'), 'r') as f:
         params = yaml.safe_load(f)
     model_params = params['model_params']
+    print(model_params)
     solver_params = params['solver_params']
     model = CTSCModel(**model_params)
     solver = CTSCSolver(model, **solver_params)
