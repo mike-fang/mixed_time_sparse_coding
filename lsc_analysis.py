@@ -3,8 +3,8 @@ import numpy as np
 from ctsc import get_timestamped_dir
 import matplotlib.pylab as plt
 
-dir_path = get_timestamped_dir(load=True, base_dir='vh_dim_8_lca')
-analysis = SolnAnalysis(dir_path, lca=True)
+dir_path = get_timestamped_dir(load=True, base_dir='vh_infer')
+analysis = SolnAnalysis(dir_path, lca=False)
 
 time = analysis.time
 mse = np.mean(analysis.mse(), axis=1)
@@ -16,5 +16,5 @@ plt.hist(diff.flatten(), bins=100)
 print(np.std(diff.flatten()))
 plt.xlim(-3, 3)
 plt.yscale('log')
-plt.savefig('./figures/lca_err_distr.pdf')
+plt.savefig('./figures/lsc_err_distr.pdf')
 plt.show()

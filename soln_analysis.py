@@ -14,9 +14,14 @@ class SolnAnalysis:
         with open(os.path.join(dir_path, 'params.yaml'), 'r') as f:
             params = yaml.safe_load(f)
             self.params = params
+        try:
+            self.sigma = params['model_params']['sigma']
+        except:
+            self.sigma = 1
         if lca:
             self.u0 = params['model_params']['u0']
             self.tau_x = params['solver_params']['n_s']
+            self.l1 = 1
         else:
             self.l1 = params['model_params']['l1']
             self.pi = params['model_params']['pi']
@@ -37,24 +42,28 @@ class SolnAnalysis:
                     self.soln[n] = self.soln[n][:, :, batch_idx:batch_idx+1]
         self.time = self.soln['t']
     def psnr(self):
-        X_soln = np.transpose(self.soln['x'], (0, 2, 1))
+        X_soln = self.soln['x']
         R_soln = self.soln['r']
         mse = np.mean((X_soln - R_soln)**2, axis=1)
         X_max = np.max(X_soln, axis=1)
         return 20 * np.log10(X_max + 1e-9) - 10 * np.log10(mse + 1e-9)
     def mse(self):
-        X_soln = np.transpose(self.soln['x'], (0, 2, 1))
+        X_soln = self.soln['x']
         R_soln = self.soln['r']
         return np.mean((X_soln - R_soln)**2, axis=1)
     def energy(self):
-        X_soln = np.transpose(self.soln['x'], (0, 2, 1))
+        X_soln = self.soln['x']
         U_soln = self.soln['u']
         R_soln = self.soln['r']
 
-        recon_err = np.mean((X_soln - R_soln)**2, axis=(1, 2))
+        recon_err = 0.5 * np.mean((X_soln - R_soln)**2, axis=(1, 2))
         sparse_loss = np.mean(np.abs(U_soln), axis=(1, 2))
-        energy = recon_err + sparse_loss
+        energy = recon_err / self.sigma**2 + self.l1 * sparse_loss
         return energy
+    def diff(self):
+        X_soln = self.soln['x']
+        R_soln = self.soln['r']
+        return R_soln - X_soln
     def mean_nz(self, smoothing=1):
         S_soln = self.soln['s'][:]
         non_zero = S_soln != 0

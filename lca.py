@@ -19,8 +19,9 @@ def load_lca_solver(dir_path):
     return solver
 
 class LCAModel:
-    def __init__(self, n_dim, n_dict, n_batch, u0=1, positive=True):
+    def __init__(self, n_dim, n_dict, n_batch, sigma=1, u0=1, positive=True):
         self.params = {k:v for (k, v) in locals().items() if isinstance(v, (int, float, bool))}
+        self.sigma = sigma
         self.n_dim = n_dim
         self.n_dict = n_dict
         self.n_batch = n_batch
@@ -40,13 +41,13 @@ class LCAModel:
         return s
     @property
     def r(self):
-        return self.A @ self.s
+        return (self.A @ self.s).T
     def step_u(self, x, eta):
         sign = np.sign(self.u) if self.positive else 1
-        grad = self.A.T @ (self.r - x.T) * sign + (self.u - self.s)
+        grad = self.A.T @ (self.r.T - x.T) * sign / self.sigma**2 + (self.u - self.s)
         self.u -= eta * grad
     def step_A(self, x, eta, normalize=True):
-        grad = (self.r - x.T) @ self.s.T
+        grad = (self.s @ (self.r - x)).T / self.sigma**2
         self.A -= eta * grad / self.n_batch
         if normalize:
             self.A /= np.linalg.norm(self.A, axis=0)
