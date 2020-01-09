@@ -6,21 +6,27 @@ import torch as th
 import h5py
 import matplotlib.pylab as plt
 
+
 class SolnAnalysis:
     def __init__(self, dir_path, lca=False):
         self.dir_path = dir_path
+        self.lca = lca
+        with open(os.path.join(dir_path, 'params.yaml'), 'r') as f:
+            params = yaml.safe_load(f)
+            self.params = params
         if lca:
-            self.solver = load_lca_solver(dir_path)
+            self.u0 = params['model_params']['u0']
+            self.tau_x = params['solver_params']['n_s']
         else:
-            self.solver = load_solver(dir_path)
-        self.model = self.solver.model
+            self.l1 = params['model_params']['l1']
+            self.pi = params['model_params']['pi']
+            self.tau_x = params['solver_params']['tau_x']
         self.set_soln()
     def set_soln(self, skip=1, offset=0, batch_idx=None):
         offset = offset % skip
         soln = h5py.File(os.path.join(self.dir_path, 'soln.h5'))
         self.soln = {}
         for n in soln:
-            skip = int(skip)
             self.soln[n] = soln[n][offset::skip]
             if batch_idx is not None:
                 if n == 't':
@@ -29,16 +35,26 @@ class SolnAnalysis:
                     self.soln[n] = self.soln[n][:, batch_idx:batch_idx+1, :]
                 else:
                     self.soln[n] = self.soln[n][:, :, batch_idx:batch_idx+1]
-    def energy(self, skip=1):
-        X_soln = self.soln['x'][::skip]
-        U_soln = self.soln['u'][::skip]
-        A_soln = self.soln['A'][::skip]
-        time = self.soln['t'][::skip]
-        energy = np.zeros_like(time)
-        recon = np.zeros_like(time)
-        for n, (A, u, x) in enumerate(zip(A_soln, U_soln, X_soln)):
-            energy[n], recon[n] = self.model.energy(x, A=A, u=u, return_recon=True)
-        return time, energy, recon
+        self.time = self.soln['t']
+    def psnr(self):
+        X_soln = np.transpose(self.soln['x'], (0, 2, 1))
+        R_soln = self.soln['r']
+        mse = np.mean((X_soln - R_soln)**2, axis=1)
+        X_max = np.max(X_soln, axis=1)
+        return 20 * np.log10(X_max + 1e-9) - 10 * np.log10(mse + 1e-9)
+    def mse(self):
+        X_soln = np.transpose(self.soln['x'], (0, 2, 1))
+        R_soln = self.soln['r']
+        return np.mean((X_soln - R_soln)**2, axis=1)
+    def energy(self):
+        X_soln = np.transpose(self.soln['x'], (0, 2, 1))
+        U_soln = self.soln['u']
+        R_soln = self.soln['r']
+
+        recon_err = np.mean((X_soln - R_soln)**2, axis=(1, 2))
+        sparse_loss = np.mean(np.abs(U_soln), axis=(1, 2))
+        energy = recon_err + sparse_loss
+        return energy
     def mean_nz(self, smoothing=1):
         S_soln = self.soln['s'][:]
         non_zero = S_soln != 0

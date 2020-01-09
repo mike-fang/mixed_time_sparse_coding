@@ -114,6 +114,8 @@ class CTSCModel(Module):
     @property
     def r(self):
         return (self.A @ self.s).t()
+    def psnr(self, x):
+        return 20 * th.log10(x.max()) - 10 * th.log10(self.recon_err(mean=True))
     def energy(self, x, A=None, u=None, return_recon=False):
             if not isinstance(x, th.Tensor):
                 x = th.tensor(x)
@@ -124,7 +126,8 @@ class CTSCModel(Module):
             if u is not None:
                 u0 = self.u.data
                 self.u.data = th.tensor(u)
-            recon = 0.5 * ((self.r - x)**2).sum()
+            #recon = 0.5 * ((self.r - x)**2).sum()
+            recon = self.recon_err(x)
             sparse = th.abs(self.u).sum()
             energy = recon/self.sigma**2 + self.l1 * sparse
 

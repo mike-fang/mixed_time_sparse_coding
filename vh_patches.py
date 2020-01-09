@@ -21,7 +21,7 @@ def vh_loader_model_solver(dim, batch_frac, dict_oc, pi, exp, dsc_params):
             n_batch=N_BATCH,
             positive=True,
             pi=pi,
-            l1=1.5,
+            l1=1.0,
             sigma=1.0,
             )
     solver_params = dsc_solver_param(**dsc_params)

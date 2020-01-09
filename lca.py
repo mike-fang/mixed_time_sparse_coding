@@ -29,7 +29,7 @@ class LCAModel:
         self.reset_params()
     def reset_params(self):
         self.A = np.random.normal(0, 1, size=(self.n_dim, self.n_dict))
-        self.u = np.random.normal(0, 1, size=(self.n_dict, self.n_batch))
+        self.u = np.random.normal(0, 5, size=(self.n_dict, self.n_batch))
     @property
     def s(self):
         where_thresh = np.abs(self.u) <= self.u0
@@ -68,7 +68,7 @@ class LCASolver(CTSCSolver):
 
         self.model = model
         self.n_batch = model.n_batch
-    def solve(self, loader, tmax=None, out_N=None, out_T=None, save_N=None, save_T=None, callback_freq=None, callback_fn=None):
+    def solve(self, loader, tmax=None, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None):
         if tmax is None:
             tmax = self.t_max
         tspan = np.arange(tmax)
@@ -77,13 +77,12 @@ class LCASolver(CTSCSolver):
         if save_N is not None:
             assert save_T is None
             save_T = tmax // save_N
-        if out_N is not None:
-            assert out_T is None
-            out_T = max(tmax // out_N, 1)
+        if soln_N is not None:
+            assert soln_T is None
+            soln_T = max(tmax // soln_N, 1)
 
         # Get initial data x
-        x = loader()
-
+        x = np.array(loader())
 
         soln = defaultdict(list)
 
@@ -92,7 +91,7 @@ class LCASolver(CTSCSolver):
             self.model.step_u(x, self.eta_s)
             if t % self.tau_x == 0:
                 self.model.step_A(x, self.eta_A)
-                x = loader()
+                x = np.array(loader())
 
 
             # Call callback function
@@ -104,11 +103,11 @@ class LCASolver(CTSCSolver):
                 self.save_checkpoint(t)
 
             # Save solution
-            if out_T is not None and (t % out_T == 0):
+            if soln_T is not None and ((t - soln_offset) % soln_T == 0):
                 soln['r'].append(self.model.r)
-                soln['u'].append(self.model.u)
+                soln['u'].append(np.copy(self.model.u))
                 soln['s'].append(self.model.s)
-                soln['A'].append(self.model.A)
+                soln['A'].append(np.copy(self.model.A))
                 soln['x'].append(x)
                 soln['t'].append(t)
 
@@ -135,7 +134,7 @@ if __name__ == '__main__':
     N_DIM = H * W
     N_BATCH = 80
     N_DICT = H + W
-    PI = 0.3
+    PI = 0.2
     loader = BarsLoader(H, W, N_BATCH, p=PI, numpy=True)
 
     N_A = 2500
@@ -148,7 +147,7 @@ if __name__ == '__main__':
     lca = LCAModel(n_dim=N_DIM, n_dict=N_DICT, n_batch=N_BATCH, u0=U0, positive=True)
     solver = LCASolver(lca, N_A, N_S, eta_A, eta_S)
     solver.get_dir_path('bars_lca')
-    soln = solver.solve(loader, out_N=1e3)
+    soln = solver.solve(loader, soln_T=N_S, soln_offset=-1)
     solver.save_soln(soln)
     
     A = soln['A'][-1]
