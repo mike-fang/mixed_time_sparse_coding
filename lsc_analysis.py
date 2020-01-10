@@ -5,7 +5,7 @@ import matplotlib.pylab as plt
 import seaborn as sns
 
 
-dir_path = get_timestamped_dir(load=True, base_dir='vh_infer')
+dir_path = get_timestamped_dir(load=True, base_dir='vh_dim_8_lsc')
 analysis = SolnAnalysis(dir_path, lca=False)
 
 time = analysis.time

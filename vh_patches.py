@@ -12,7 +12,7 @@ def vh_loader_model_solver(dim, batch_frac, dict_oc, pi, exp, dsc_params):
     N_BATCH = int(N_DIM * batch_frac)
     N_DICT = int(dict_oc * N_DIM)
     loader = VanHaterenSampler(H, W, N_BATCH)
-    if exp != '1T':
+    if exp != 'lsc':
         pi = 1
 
     model_params = dict(
@@ -32,7 +32,7 @@ def vh_loader_model_solver(dim, batch_frac, dict_oc, pi, exp, dsc_params):
     elif exp == 'asynch':
         solver_params['spike_coupling'] = False
         solver_params['asynch'] = True
-    elif exp == '1T':
+    elif exp == 'lsc':
         solver_params['spike_coupling'] = False
         solver_params['asynch'] = True
         solver_params['T_u'] = 1
@@ -51,9 +51,9 @@ if __name__ == '__main__':
 
     PI = 0.05
 
-    EXP = '1T'
+    EXP = 'lsc'
     LOAD = False
-    assert EXP in ['dsc', 'ctsc', 'asynch', '1T']
+    assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
     base_dir = f'vh_dim_{DIM}_{EXP}'
 
     loader, model_params, solver_params = vh_loader_model_solver(dim=DIM, batch_frac=0.5, dict_oc=OC, dsc_params=dsc_params, pi=PI, exp=EXP)

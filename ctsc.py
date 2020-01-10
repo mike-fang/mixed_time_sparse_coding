@@ -126,8 +126,7 @@ class CTSCModel(Module):
             if u is not None:
                 u0 = self.u.data
                 self.u.data = th.tensor(u)
-            #recon = 0.5 * ((self.r - x)**2).sum()
-            recon = self.recon_err(x)
+            recon = 0.5 * ((self.r - x)**2).sum()
             sparse = th.abs(self.u).sum()
             energy = recon/self.sigma**2 + self.l1 * sparse
 
