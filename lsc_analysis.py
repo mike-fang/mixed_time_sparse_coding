@@ -4,6 +4,7 @@ from ctsc import get_timestamped_dir
 import matplotlib.pylab as plt
 import seaborn as sns
 
+
 dir_path = get_timestamped_dir(load=True, base_dir='vh_infer')
 analysis = SolnAnalysis(dir_path, lca=False)
 
@@ -13,10 +14,13 @@ energy = analysis.energy()
 mean_nz = analysis.mean_nz()
 
 diff = analysis.diff()
-D0 = (diff[:, 0, :])
-D1 = (diff[:, 2, :])
+D0 = (diff[::10, 0, :])
+D1 = (diff[::10, 2, :])
 
-plt.scatter(D0, D1, s=1, c='k', alpha=.1)
+g = sns.jointplot(D0, D1, kind='kde')
+g.ax_marg_x.set_xlim(-2, 2)
+g.ax_marg_y.set_ylim(-2, 2)
+plt.savefig('./figures/lsc_joint_distr.pdf')
 plt.show()
 assert False
 plt.hist(diff.flatten(), bins=100)
