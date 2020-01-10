@@ -12,6 +12,14 @@ energy = analysis.energy()
 mean_nz = analysis.mean_nz()
 
 diff = analysis.diff()
+
+D0 = (diff[:, 0, :])
+D1 = (diff[:, 1, :])
+
+plt.scatter(D0, D1)
+plt.show()
+
+assert False
 plt.hist(diff.flatten(), bins=100)
 print(np.std(diff.flatten()))
 plt.xlim(-3, 3)

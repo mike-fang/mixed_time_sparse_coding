@@ -8,3 +8,4 @@ dependencies:
     - h5py
     - scipy
     - pyyaml
+    - seaborn
