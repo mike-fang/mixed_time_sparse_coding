@@ -47,7 +47,7 @@ except:
     solver.spike_coupling=False
     solver.asynch=True
     solver.get_dir_path('bars_asynch')
-    soln = solver.solve(loader, out_N=1e3, save_N=1)
+    soln = solver.solve(loader, soln_N=1e3, save_N=1)
     solver.save_soln(soln)
 
     X = soln['x']

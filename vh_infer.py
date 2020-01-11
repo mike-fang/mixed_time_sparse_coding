@@ -41,7 +41,7 @@ solver.load_checkpoint(dir_path=dict_dir_path)
 out_dir = solver.get_dir_path('vh_fixed_dict_0T')
 #out_dir = solver.get_dir_path('vh_noise')
 
-soln = solver.solve(loader, out_N=1e3, save_N=1)
+soln = solver.solve(loader, soln_N=1e3, save_N=1)
 solver.save_soln(soln)
 
 X = soln['x'][:]

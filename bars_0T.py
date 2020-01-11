@@ -59,7 +59,7 @@ if LOAD:
 else:
     solver = CTSCSolver(model, **solver_params)
     solver.get_dir_path(base_dir)
-    soln = solver.solve(loader, out_N=1e4, save_N=1)
+    soln = solver.solve(loader, soln_N=1e4, save_N=1)
     solver.save_soln(soln)
 
 X = soln['x'][:]

@@ -39,10 +39,11 @@ def vh_loader_model_solver(dim, batch_frac, dict_oc, pi, exp, dsc_params):
     return loader, model_params, solver_params
 
 if __name__ == '__main__':
+    N_S = 50
     # DSC params
     dsc_params = dict(
         n_A = 4000,
-        n_s = 50,
+        n_s = N_S,
         eta_A = 0.02,
         eta_s = 0.1,
     )
@@ -51,7 +52,7 @@ if __name__ == '__main__':
 
     PI = 0.05
 
-    EXP = 'lsc'
+    EXP = 'dsc'
     LOAD = False
     assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
     base_dir = f'vh_dim_{DIM}_{EXP}'
@@ -60,7 +61,7 @@ if __name__ == '__main__':
 
     # Define model, solver
     model = CTSCModel(**model_params)
-    solver = CTSCSolver(model, **solver_params)
+    #solver = CTSCSolver(model, **solver_params)
 
     # Load or make soln
     if LOAD:
@@ -69,7 +70,7 @@ if __name__ == '__main__':
     else:
         solver = CTSCSolver(model, **solver_params)
         dir_path = solver.get_dir_path(base_dir)
-        soln = solver.solve(loader, out_N=1e4, save_N=1)
+        soln = solver.solve(loader, soln_T=N_S, soln_offset=-1)
         solver.save_soln(soln)
 
     X = soln['x'][:]

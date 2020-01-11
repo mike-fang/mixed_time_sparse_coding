@@ -116,8 +116,6 @@ def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=Non
         n_frames = int(n_frames)
         skip = max(1, n_frames_total // n_frames)
 
-
-
     # Get n_rows / n_cols
     n_cols = ((n_total * ratio)**0.5)
     rows_X = int(np.ceil(n_X / n_cols))

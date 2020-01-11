@@ -14,6 +14,8 @@ class SolnAnalysis:
         with open(os.path.join(dir_path, 'params.yaml'), 'r') as f:
             params = yaml.safe_load(f)
             self.params = params
+            self.model_params = params['model_params']
+            self.solver_params = params['solver_params']
         try:
             self.sigma = params['model_params']['sigma']
         except:
@@ -75,19 +77,20 @@ class SolnAnalysis:
             mean_nz[-smoothing:] = mean_nz[-smoothing]
             mean_nz[:smoothing] = mean_nz[smoothing]
         return mean_nz
-    def plot_nz_hist(self, title='', last_frac=0.1, s_max=3, eps_p=1e-5, log=True, n_bins=100, ylim=None):
-        pi = self.model.pi
-        l1 = self.model.l1
+    def plot_nz_hist(self, title='', last_frac=0.1, s_max=3, eps_s=1e-5, log=True, n_bins=100, ylim=None):
+        pi = self.pi
+        l1 = self.l1
         u0 = -np.log(pi) / l1
 
         S_soln = self.soln['s'][:]
         N_S, _, _ = S_soln.shape
         S_converged = S_soln[-int(N_S*last_frac):].flatten()
 
-        l0_sparsity = (S_converged == 0).mean()
+        l0_sparsity = (S_converged < eps_s).mean()
 
         bins = np.linspace(0, s_max / l1)
-        bins = np.insert(bins, 1, eps_p)
+        bins[1] = eps_s
+        #bins = np.insert(bins, 1, eps_s)
         plt.hist(S_converged.flatten(), bins=bins, density=True, fc='grey', ec='black', label='Prob. Distr.')
         prob_expected = l1 * np.exp(-l1 * (bins + u0))
         plt.plot(bins, prob_expected, 'r--', label=r'$P_S(s) = \frac{\pi}{\lambda}e^{- \lambda \cdot s}$')
@@ -97,9 +100,9 @@ class SolnAnalysis:
             plt.ylim(0, 1.2 * l1 * pi)
         else:
             plt.ylim(ylim)
-        plt.xlim(eps_p, bins[-1])
+        plt.xlim(eps_s, bins[-1])
         plt.ylabel(rf'Distr. of Nonzero Coefficients')
-        plt.xlabel(rf'Coeff. Value ($s$); Emperical $P(s > 0) = {1-l0_sparsity:.2f}$')
+        plt.xlabel(rf'Coeff. Value ($s$); Emperical $P(s > \epsilon_s) = {1-l0_sparsity:.2f}$')
 
         title += rf' $(\pi = {pi:.2f}, \lambda_1 = {l1:.2f})$'
         plt.title(title)

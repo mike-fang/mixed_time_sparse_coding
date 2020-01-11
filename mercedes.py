@@ -23,6 +23,6 @@ solver_params = dict(
 model = CTSCModel(**model_params)
 solver = CTSCSolver(model, loader, **solver_params)
 tspan = np.arange(1e4)
-soln = solver.solve(tspan, out_N=1e2)
+soln = solver.solve(tspan, soln_N=1e2)
 
 show_2d_evo(soln)

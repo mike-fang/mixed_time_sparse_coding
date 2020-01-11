@@ -10,6 +10,7 @@ import yaml
 from time import time
 import os.path
 from glob import glob
+import matplotlib.pylab as plt
 
 FILE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -184,8 +185,9 @@ class CTSCSolver:
         solver = cls(model, **solver_params)
         solver.t_max = t_max
         return solver
-    def __init__(self, model, tau_A, tau_u, tau_x, mu_A=0., mu_u=0., T_A=0., T_u=1., asynch=False, spike_coupling=False, tau_A_correction=True, t_max=None):
+    def __init__(self, model, tau_A, tau_u, tau_x, mu_A=0., mu_u=0., T_A=0., T_u=1., asynch=False, spike_coupling=False, tau_A_correction=True, t_max=None, dt=1):
         self.t_max = t_max
+        self.dt = dt
         self.spike_coupling  = spike_coupling
         if spike_coupling:
             assert not asynch
@@ -235,18 +237,21 @@ class CTSCSolver:
         self.optimizer.step(closure, dt=dt)
         self.pg_A['coupling'] = 0
         self.pg_u['coupling'] = 1
-    def solve(self, loader, tmax=None, normalize_A=True, out_N=None, out_T=None, save_N=None, save_T=None, callback_freq=None, callback_fn=None):
+    def solve(self, loader, tmax=None, dt=None, normalize_A=True, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None):
         if tmax is None:
             tmax = self.t_max
-        tspan = np.arange(tmax)
+        if dt is None:
+            dt = self.dt
+        print(dt)
+        tspan = np.arange(int(tmax / dt))
 
         # Get time interval if number output/soln given
         if save_N is not None:
             assert save_T is None
             save_T = tmax // save_N
-        if out_N is not None:
-            assert out_T is None
-            out_T = max(tmax // out_N, 1)
+        if soln_N is not None:
+            assert soln_T is None
+            soln_T = max(tmax // soln_N, 1)
 
         # Get initial data x
         x = loader()
@@ -270,10 +275,6 @@ class CTSCSolver:
 
         # Iterate over tspan
         for n, t in enumerate(tqdm(tspan)):
-            #dt = dtspan[n]
-            #TODO: fix dt bullshit
-            dt = 1
-
             # Optimizer step
             self.optimizer.zero_grad()
             self.optimizer.step(closure, dt=dt)
@@ -302,8 +303,9 @@ class CTSCSolver:
             if save_T is not None and (t % save_T == 0):
                 self.save_checkpoint(t)
 
+
             # Save solution
-            if out_T is not None and (t % out_T == 0):
+            if soln_T is not None and ((t - soln_offset) % soln_T == 0):
                 soln['r'].append(self.model.r.clone().data.numpy())
                 soln['u'].append(self.model.u.clone().data.numpy())
                 soln['s'].append(self.model.s.clone().data.numpy())
@@ -398,7 +400,7 @@ if __name__ == '__main__':
 
     try:
         solver.get_dir_path('vh_test', name='trained_dict', overwrite=False)
-        soln = solver.solve(loader, out_N=1e4, save_N=1)
+        soln = solver.solve(loader, soln_N=1e4, save_N=1)
         solver.save_soln(soln)
     except:
         dir_path = os.path.join(FILE_DIR, 'results', 'vh_test', 'trained_dict')
