@@ -49,10 +49,13 @@ class SolnAnalysis:
         mse = np.mean((X_soln - R_soln)**2, axis=1)
         X_max = np.max(X_soln, axis=1)
         return 20 * np.log10(X_max + 1e-9) - 10 * np.log10(mse + 1e-9)
-    def mse(self):
+    def mse(self, mean=False):
         X_soln = self.soln['x']
         R_soln = self.soln['r']
-        return np.mean((X_soln - R_soln)**2, axis=1)
+        mse = np.mean((X_soln - R_soln)**2, axis=1)
+        if mean:
+            mse = np.mean(mse, axis=1)
+        return mse
     def energy(self):
         X_soln = self.soln['x']
         U_soln = self.soln['u']
@@ -66,10 +69,11 @@ class SolnAnalysis:
         X_soln = self.soln['x']
         R_soln = self.soln['r']
         return R_soln - X_soln
-    def mean_nz(self, smoothing=1):
+    def mean_nz(self, smoothing=1, thresh=0):
         S_soln = self.soln['s'][:]
-        non_zero = S_soln != 0
+        non_zero = np.abs(S_soln) > thresh
         mean_nz = non_zero.mean(axis=(1, 2))
+        print(np.abs(S_soln).mean())
         smoothing = int(smoothing)
         if smoothing > 1:
             kernel = np.ones(smoothing) / smoothing

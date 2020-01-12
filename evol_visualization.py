@@ -1,61 +1,76 @@
 from soln_analysis import *
-import matplotlib.pyplot as plt
+from visualization import show_evol
 from matplotlib import gridspec
 
-def remove_border(ax):
-    for pos in ['top', 'bottom', 'left', 'right']:
-        ax.spines[pos].set_visible(False)
-def populate_sgs(sub_gs, data, symbol, title, t_labels=False):
-    remove_border(sub_gs)
-    sub_gs.set_title(title)
-    sub_gs.set_xticks([])
-    sub_gs.set_yticks([])
-    inner_gs = gridspec.GridSpecFromSubplotSpec(4, N_COL, subplot_spec=sub_gs, wspace=.05, hspace=.05)
+exp = 'asynch'
+base_dir = f'bars_large_step_{exp}'
+dir_path = get_timestamped_dir(load=True, base_dir=base_dir)
+analysis = SolnAnalysis(dir_path)
 
-    for n in range(N_COL):
-        for i in [0, 1, -1]:
-            ax = plt.Subplot(fig, inner_gs[i, n])
-            ax.imshow(data[int(tau_x * n / t_frames), i])
-            ax.set_xticks([])
-            ax.set_yticks([])
-            fig.add_subplot(ax)
-            if n == 0:
-                if i == -1:
-                    i = 'N'
-                ax.set_ylabel(fr'${symbol}_{i}$')
+X = analysis.soln['x']
+tau_x = analysis.tau_x
+N, _, _ = X.shape
 
-    ax = plt.Subplot(fig, inner_gs[2, 0])
-    ax.set_xticks([])
-    ax.set_yticks([])
-    remove_border(ax)
-    ax.set_ylabel(r'$\dots$')
-    fig.add_subplot(ax)
+X = analysis.soln['x'][N//2:]
+R = analysis.soln['r'][N//2:]
+A = analysis.soln['A'][N//2:]
+T = analysis.soln['t'][N//2:]
+T -= T.min()
+im_shape = (8, 8)
 
-ds_name = 'vh_dim_8_dsc'
 
-fig = plt.figure(figsize=(12, 8))
+def plot_XR(ax, n, d=None):
+    if d is None:
+        _, _, D = X.shape
+        rand_proj = np.random.randn(D)
+        X_proj = X[:, n, :] @ rand_proj
+        R_proj = R[:, n, :] @ rand_proj
+    else:
+        X_proj = X[:, n, d]
+        R_proj = R[:, n, d]
+
+    ax.plot(T / tau_x, X_proj, 'k', label=rf'$x_{n+1}$')
+    ax.plot(T / tau_x, R_proj, 'k:', label=rf'$\hat x_{n+1}$')
+    plt.ylabel('a.u.', fontsize=14)
+    plt.yticks([])
+    plt.xlabel('')
+    plt.xticks([])
+    plt.legend(loc=1)
+def plot_evo(X, R, A, T, tau_x):
+    fig = plt.figure(figsize=(8, 6))
+    gs = fig.add_gridspec(5, 1, hspace=.5)
+
+    ax = fig.add_subplot(gs[0, :])
+    plt.title('Input and Reconstruction', fontsize=18)
+    plot_XR(ax, 0)
+    ax = fig.add_subplot(gs[1, :])
+    plot_XR(ax, 1)
+    ax = fig.add_subplot(gs[2, :])
+    plot_XR(ax, 2)
+
+    ax = fig.add_subplot(gs[3:, :])
+    ax.plot(T / tau_x, A[:, 0, 0], 'r', label=r'$A_1$')
+    ax.plot(T / tau_x, A[:, 1, 0], 'g', label=r'$A_2$')
+    ax.plot(T / tau_x, A[:, 2, 0], 'orange', label=r'$A_3$')
+    ax.plot(T / tau_x, A[:, 3, 0], 'b', label=r'$A_4$')
+    plt.title('Dictionary', fontsize=18)
+    plt.ylabel('a.u.', fontsize=14)
+    plt.yticks([])
+    plt.xlabel(r'Time ($\tau_x$)', fontsize=14)
+    plt.legend(loc=1)
+
+plot_evo(X, R, A, T, tau_x)
+plt.savefig(f'./figures/evol_vis_1d_{exp}.pdf', bbox_inches='tight')
+plt.show()
+
+assert False
+
+
 
 t_mult = 5
-t_frames = 3
+t_frames = 4
 
-N_COL = t_mult * t_frames
+show_evol(X, R, A, im_shape, tau_x, 5)
 
-im_shape = (8,8)
-tau_x = 100
-X = np.random.randn(1000, 10, 8, 8)
-T = np.arange(1000)
-
-main_gs = fig.add_gridspec(3, N_COL)
-
-gs_X = fig.add_subplot(main_gs[0, :])
-gs_R = fig.add_subplot(main_gs[1, :])
-gs_A = fig.add_subplot(main_gs[2, :])
-
-populate_sgs(gs_X, X, 'x', 'Data')
-populate_sgs(gs_R, X, r'\hat x', 'Reconstruction')
-populate_sgs(gs_A, X, 'A', 'Dictionary')
-
-
-
-
-plt.show()
+plt.savefig(f'./figures/evol_vis_{exp}.pdf', bbox_inches='tight')
+#plt.show()

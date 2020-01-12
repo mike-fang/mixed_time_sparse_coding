@@ -2,23 +2,32 @@ import torch as th
 import numpy as np
 from ctsc import *
 from loaders import BarsLoader
-from visualization import show_img_XRA
+from visualization import show_img_XRA, show_batch_img
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
 
 # Define loader
 H = W = 4
 N_DIM = H * W
-N_BATCH = H * W
+N_BATCH = 2 * (H * W)
 N_DICT = H + W
 PI = 0.3
 loader = BarsLoader(H, W, N_BATCH, p=PI)
+LARGE = False
+N_S = 100
 
 # DSC params
-N_A = 1000
-N_S = 250
-ETA_A = 0.1
-ETA_S = 0.1
+if not LARGE:
+    N_A = 1000
+    N_S = N_S
+    ETA_A = 0.1
+    ETA_S = 0.1
+else:
+    N_A = 10
+    N_S = 250
+    ETA_A = 5
+    ETA_S = 0.1
+
 
 # model params
 model_params = dict(
@@ -27,14 +36,17 @@ model_params = dict(
         n_batch=N_BATCH,
         positive=True,
         pi=1.,
-        l1=1,
+        l1=.1,
         sigma=1.0,
         )
 
-EXP = '1T'
+EXP = 'dsc'
 LOAD = False
-assert EXP in ['dsc', 'ctsc', 'asynch', '1T']
-base_dir = f'bars_{EXP}'
+assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
+if LARGE:
+    base_dir = f'bars_large_step_{EXP}'
+else:
+    base_dir = f'bars_{EXP}'
 
 # Define model, solver
 model = CTSCModel(**model_params)
@@ -46,7 +58,7 @@ elif EXP == 'ctsc':
 elif EXP == 'asynch':
     solver_params['spike_coupling'] = False
     solver_params['asynch'] = True
-elif EXP == '1T':
+elif EXP == 'lsc':
     solver_params['spike_coupling'] = False
     solver_params['asynch'] = True
     solver_params['T_u'] = 1
@@ -58,10 +70,16 @@ if LOAD:
     soln = h5py.File(os.path.join(dir_path, 'soln.h5'))
 else:
     solver = CTSCSolver(model, **solver_params)
+    #dir_path = solver.get_dir_path(base_dir)
     solver.get_dir_path(base_dir)
-    soln = solver.solve(loader, out_N=1e4, save_N=1)
+    soln = solver.solve(loader, soln_T=N_S, soln_offset=-1)
     solver.save_soln(soln)
 
+A = soln['A'][:]
+show_batch_img(A[-1].T, im_shape=(H, W))
+plt.show()
+
+assert False
 X = soln['x'][:]
 R = soln['r'][:]
 A = soln['A'][:]

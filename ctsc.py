@@ -227,7 +227,8 @@ class CTSCSolver:
         if self.asynch:
             where_load.bernoulli_(1/self.tau_x)
         else:
-            load_idx = (tspan % self.tau_x == self.tau_x-1)
+            #load_idx = (tspan % self.tau_x == self.tau_x-1)
+            load_idx = (tspan % self.tau_x == 0)
             where_load[load_idx] = 1
         return where_load
     def step_A_only(self, closure, dt):
@@ -331,6 +332,7 @@ class CTSCSolver:
     def save_soln(self, soln, dir_path=None):
         if dir_path is None:
             dir_path = self.dir_path
+        print(soln)
         t_last = soln['t'][-1]
         #dir_path = get_timestamped_dir(base_dir=base_dir)
         self.save_hyperparams(dir_path)

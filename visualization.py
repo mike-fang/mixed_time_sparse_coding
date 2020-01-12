@@ -5,6 +5,32 @@ from matplotlib import gridspec
 import h5py
 #from helpers import Solutions_H5
 
+CMAP = 'Greys_r'
+
+def show_batch_img(ims, im_shape=None, ratio=1.5):
+    # Get n_rows / n_cols
+    N = len(ims)
+    n_row = ((ratio * N)**0.5)
+    n_col = int(np.ceil(N / n_row))
+    n_row = int(np.ceil(n_row))
+
+    # Make subplots
+    fig, axes = plt.subplots(n_row, n_col)
+    axes = [ax for row in axes for ax in row]
+
+    # Populate subplots with img plots
+    n = 0
+    for n, ax in enumerate(axes):
+        try:
+            im = ims[n]
+            if im_shape is not None:
+                im = im.reshape(im_shape)
+        except:
+            im = [[0]]
+
+        ax.imshow(im, cmap=CMAP)
+        ax.set_xticks([])
+        ax.set_yticks([])
 def get_grid_axes(n_axes, ratio=1.5):
     # Get n_rows / n_cols
     n_row = ((ratio * n_axes)**0.5)
@@ -56,7 +82,7 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
     for ax_row in axes:
         for ax in ax_row:
             img_plot.append(
-                    ax.imshow([[0]], cmap='greys')
+                    ax.imshow([[0]], cmap=CMAP)
                     )
             ax.set_xticks([])
             ax.set_yticks([])
@@ -139,7 +165,7 @@ def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=Non
         img_plots = []
         for n in range(n_imgs):
             ax = plt.Subplot(fig, inner_gs[n])
-            img_plots.append(ax.imshow([[0]], cmap='Greys_r'))
+            img_plots.append(ax.imshow([[0]], cmap=CMAP))
             ax.set_xticks([])
             ax.set_yticks([])
             fig.add_subplot(ax)
@@ -300,6 +326,61 @@ def show_2d_evo_no_model(soln, n_frames=100, overlap=3, f_out=None):
     if f_out is not None:
         anim.save(f_out)
     plt.show()
+
+def show_evol(X, R, A, im_shape, tau_x, t_mult, n_frames=4):
+    def remove_border(ax):
+        for pos in ['top', 'bottom', 'left', 'right']:
+            ax.spines[pos].set_visible(False)
+    def populate_sgs(sub_gs, data, symbol, title, plot_A=False):
+        remove_border(sub_gs)
+        sub_gs.set_title(title)
+        sub_gs.set_xticks([])
+        sub_gs.set_yticks([])
+        inner_gs = gridspec.GridSpecFromSubplotSpec(4, n_cols, subplot_spec=sub_gs, wspace=.05, hspace=.05)
+
+        for n in range(n_cols):
+            for i in [0, 1, -1]:
+                tau_frac = n / n_frames
+                idx = int(tau_frac * tau_x)
+                if plot_A:
+                    im = data[idx, :, i]
+                else:
+                    im = data[idx, i]
+                im = im.reshape(im_shape)
+
+                ax = plt.Subplot(fig, inner_gs[i, n])
+                ax.imshow(im, cmap=CMAP)
+                ax.set_xticks([])
+                ax.set_yticks([])
+                fig.add_subplot(ax)
+
+                if plot_A and (i == -1):
+                    if tau_frac % .5 == 0:
+                        ax.set_xlabel(fr'${tau_frac:.1f} \tau_x$')
+                if n == 0:
+                    if i == -1:
+                        i = 'K' if n_frames else 'N'
+                    ax.set_ylabel(fr'${symbol}_{i}$')
+
+
+        ax = plt.Subplot(fig, inner_gs[2, 0])
+        ax.set_xticks([])
+        ax.set_yticks([])
+        remove_border(ax)
+        ax.set_ylabel(r'$\dots$')
+        fig.add_subplot(ax)
+
+    n_cols = t_mult * n_frames
+    fig = plt.figure(figsize=(12, 8))
+    main_gs = fig.add_gridspec(3, n_cols, hspace=.5)
+
+    gs_X = fig.add_subplot(main_gs[0, :])
+    gs_R = fig.add_subplot(main_gs[1, :])
+    gs_A = fig.add_subplot(main_gs[2, :])
+
+    populate_sgs(gs_X, X, 'x', 'Data')
+    populate_sgs(gs_R, R, r'\hat x', 'Reconstruction')
+    populate_sgs(gs_A, A, 'A', 'Dictionary', plot_A=True)
 
 if __name__ == '__main__':
     soln = Solutions_H5('./results/hv_dsc_4x4/soln.h5')
