@@ -16,13 +16,13 @@ SIGMA = .5
 loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA)
 LARGE = False
 N_S = 100
-L1 = 0.2
+L1 = 1
 
 # DSC params
 if not LARGE:
-    N_A = 1000
+    N_A = 5000
     N_S = N_S
-    ETA_A = 0.02
+    ETA_A = 0.05
     ETA_S = 0.02
 else:
     N_A = 10
@@ -42,7 +42,7 @@ model_params = dict(
         sigma=SIGMA,
         )
 
-EXP = 'lsc'
+EXP = 'dsc'
 LOAD = False
 assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
 if LARGE:
@@ -52,7 +52,7 @@ else:
 
 # Define model, solver
 model = CTSCModel(**model_params)
-model.A.data = th.tensor(np.load('./A0.npy'))
+#model.A.data = th.tensor(np.load('./A0.npy'))
 solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S, return_params=True)
 if EXP == 'dsc':
     pass
@@ -75,9 +75,13 @@ else:
     solver = CTSCSolver(model, **solver_params)
     #dir_path = solver.get_dir_path(base_dir)
     solver.get_dir_path(base_dir)
-    soln = solver.solve(loader, soln_T=N_S, soln_offset=-1)
-    #soln = solver.solve(loader, soln_T=N_S * 5 - 1)
+    soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, out_mse=True)
     solver.save_soln(soln)
+
+t = soln['mse_t']
+mse = soln['mse']
+print(t.shape)
+print(mse.shape)
 
 X = soln['x'][:]
 R = soln['r'][:]

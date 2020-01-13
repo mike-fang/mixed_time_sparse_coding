@@ -237,7 +237,7 @@ class CTSCSolver:
         self.optimizer.step(closure, dt=dt)
         self.pg_A['coupling'] = 0
         self.pg_u['coupling'] = 1
-    def solve(self, loader, tmax=None, dt=None, normalize_A=True, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None):
+    def solve(self, loader, tmax=None, dt=None, normalize_A=True, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None, out_mse=False):
         if tmax is None:
             tmax = self.t_max
         if dt is None:
@@ -272,6 +272,10 @@ class CTSCSolver:
         if self.spike_coupling:
             self.pg_A['coupling'] = 0
 
+        if out_mse:
+            mse_t = []
+            mse_list = []
+
         # Iterate over tspan
         for n, t in enumerate(tqdm(tspan)):
             # Optimizer step
@@ -281,6 +285,8 @@ class CTSCSolver:
             # Update again if DSC
             batch_size = int(load_n[n].sum())
             if self.spike_coupling and batch_size > 0:
+                if n == 0:
+                    continue
                 self.step_A_only(closure, dt)
 
             # Normalize dictionary if needed
@@ -289,9 +295,14 @@ class CTSCSolver:
 
             # Load new batch asynchronously if necessary
             if batch_size > 0:
+                where_load = load_n[n].nonzero()
+                if out_mse:
+                    diff = (self.model.r[where_load] - x[where_load]).data.numpy()
+                    mse_list.append((diff**2).mean())
+                    mse_t.append(t)
                 #TODO: remove this stupid switcharoo
                 x_ = x.clone()
-                x_.data[load_n[n].nonzero()] = loader(n_batch=batch_size).view(batch_size, 1, -1)
+                x_.data[where_load] = loader(n_batch=batch_size).view(batch_size, 1, -1)
                 x = x_
 
             # Call callback function
@@ -311,6 +322,9 @@ class CTSCSolver:
                 soln['A'].append(self.model.A.clone().data.numpy())
                 soln['x'].append(x.data.numpy())
                 soln['t'].append(t)
+        if out_mse:
+            soln['mse_t'] = np.array(mse_t)
+            soln['mse'] = np.array(mse_list)
 
         if soln:
             for k, v in soln.items():
@@ -330,7 +344,7 @@ class CTSCSolver:
     def save_soln(self, soln, dir_path=None):
         if dir_path is None:
             dir_path = self.dir_path
-        t_last = soln['t'][-1]
+        t_last = self.t_max
         #dir_path = get_timestamped_dir(base_dir=base_dir)
         self.save_hyperparams(dir_path)
         self.save_checkpoint(t_last, dir_path=dir_path)
