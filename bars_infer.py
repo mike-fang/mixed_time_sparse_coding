@@ -11,25 +11,15 @@ H = W = 8
 N_DIM = H * W
 N_BATCH = 2 * (H * W)
 N_DICT = H + W
-PI = 0.3
+PI = 0.1
 SIGMA = .5
 loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA)
-LARGE = False
 N_S = 100
-L1 = 0.2
 
-# DSC params
-if not LARGE:
-    N_A = 1000
-    N_S = N_S
-    ETA_A = 0.02
-    ETA_S = 0.02
-else:
-    N_A = 10
-    N_S = 250
-    ETA_A = 5
-    ETA_S = 0.1
-
+N_A = 1
+N_S = N_S
+ETA_A = 0.05
+ETA_S = 0.1
 
 # model params
 model_params = dict(
@@ -38,7 +28,7 @@ model_params = dict(
         n_batch=N_BATCH,
         positive=True,
         pi=1.,
-        l1=L1,
+        l1=1,
         sigma=SIGMA,
         )
 
@@ -52,7 +42,6 @@ else:
 
 # Define model, solver
 model = CTSCModel(**model_params)
-model.A.data = th.tensor(np.load('./A0.npy'))
 solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S, return_params=True)
 if EXP == 'dsc':
     pass
@@ -75,8 +64,8 @@ else:
     solver = CTSCSolver(model, **solver_params)
     #dir_path = solver.get_dir_path(base_dir)
     solver.get_dir_path(base_dir)
-    soln = solver.solve(loader, soln_T=N_S, soln_offset=-1)
-    #soln = solver.solve(loader, soln_T=N_S * 5 - 1)
+    #soln = solver.solve(loader, soln_T=N_S, soln_offset=-1)
+    soln = solver.solve(loader, soln_T=N_S * 5 - 1)
     solver.save_soln(soln)
 
 X = soln['x'][:]
@@ -85,3 +74,4 @@ A = soln['A'][:]
 
 show_img_XRA(X, R, A, n_frames=1e2, img_shape=(H, W))
 plt.show()
+

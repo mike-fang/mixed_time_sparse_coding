@@ -64,7 +64,7 @@ class StarLoader_(Loader):
         return X
 
 class BarsLoader:
-    def __init__(self, H, W, n_batch, p=0.1, positive=False, test=False, numpy=False):
+    def __init__(self, H, W, n_batch, p=0.1, positive=False, test=False, numpy=False, sigma=1):
         self.H = H
         self.W = W
         self.im_shape = (H, W)
@@ -73,6 +73,7 @@ class BarsLoader:
         self.positive = positive
         self.test = test
         self.numpy = numpy
+        self.sigma = sigma
 
         self.set_bases()
     def reset(self):
@@ -93,6 +94,9 @@ class BarsLoader:
             S[:d_min, :d_min] = th.eye(d_min)
 
         batch = S @ self.bases
+        noise = th.Tensor(batch.shape)
+        noise.normal_()
+        batch += noise * self.sigma
 
         if self.numpy:
             batch = np.array(batch)

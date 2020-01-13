@@ -1,11 +1,10 @@
 from ctsc import *
 from lca import load_lca_solver
-
 import numpy as np
 import torch as th
 import h5py
 import matplotlib.pylab as plt
-
+import seaborn as sns
 
 class SolnAnalysis:
     def __init__(self, dir_path, lca=False):
@@ -43,6 +42,14 @@ class SolnAnalysis:
                 else:
                     self.soln[n] = self.soln[n][:, :, batch_idx:batch_idx+1]
         self.time = self.soln['t']
+        self.X = self.soln['x']
+        self.S = self.soln['s']
+        self.U = self.soln['u']
+        self.R = self.soln['r']
+        self.A = self.soln['A']
+
+        self.n_t, self.n_batch, self.n_dim = self.X.shape
+        _, self.n_dict, _ = self.S.shape
     def psnr(self):
         X_soln = self.soln['x']
         R_soln = self.soln['r']
@@ -56,14 +63,18 @@ class SolnAnalysis:
         if mean:
             mse = np.mean(mse, axis=1)
         return mse
-    def energy(self):
-        X_soln = self.soln['x']
-        U_soln = self.soln['u']
-        R_soln = self.soln['r']
-
-        recon_err = 0.5 * np.mean((X_soln - R_soln)**2, axis=(1, 2))
-        sparse_loss = np.mean(np.abs(U_soln), axis=(1, 2))
+    def energy(self, X=None, R=None, U=None, mean=True):
+        if X is None:
+            X = self.X
+        if R is None:
+            R = self.R
+        if U is None:
+            U = self.U
+        recon_err = 0.5 * np.mean((X - R)**2, axis=2)
+        sparse_loss = np.mean(np.abs(U), axis=1)
         energy = recon_err / self.sigma**2 + self.l1 * sparse_loss
+        if mean:
+            energy = np.mean(energy, axis=1)
         return energy
     def diff(self):
         X_soln = self.soln['x']
@@ -111,6 +122,35 @@ class SolnAnalysis:
         title += rf' $(\pi = {pi:.2f}, \lambda_1 = {l1:.2f})$'
         plt.title(title)
         plt.legend()
+    def show_hist_evo(self, t_inter, thresh = 1e-1):
+        n_inter = int(self.n_t // t_inter)
+        fig, axes = plt.subplots(n_inter, figsize=(6, 8))
+        fig.subplots_adjust(hspace=0.4, wspace=0.4)
+        bins = np.arange(self.n_dict + 1.5) - 0.5
+        for n in range(n_inter):
+            ax = axes[n]
+            t0 = t_inter * n
+            t1 = t_inter * (n + 1)
+            soln_inter = self.S[t0:t1]
+            nonzero = np.abs(soln_inter) > thresh
+            n_nonzero = np.sum(nonzero, axis=(1))
+            ax.hist(n_nonzero.flatten(), bins=bins, density=True, fc='grey', ec='k')
+            ax.set_xticks(bins + 0.5)
+    def zero_coeffs(self, thresh):
+        S = self.S
+        A = self.A
+
+        where_thresh = np.abs(S) < thresh
+        Sz = S.copy()
+        Sz[where_thresh] = 0
+        Rz = np.transpose(A @ Sz, axes=(0, 2, 1))
+        E = self.energy(mean=False)
+        Ez = self.energy(R=Rz, U=Sz, mean=False)
+        where_lower = Ez < E
+        SzT = np.transpose(Sz, axes=(0, 2, 1))
+        ST = np.transpose(S, axes=(0, 2, 1))
+        ST[where_lower] = SzT[where_lower]
+        self.R = np.transpose(A @ S, axes=(0, 2, 1))
 
 if __name__ == '__main__':
     dir_path = get_timestamped_dir(load=True, base_dir='bars_dsc')

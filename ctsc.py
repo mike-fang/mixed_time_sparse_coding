@@ -48,7 +48,6 @@ def load_solver(dir_path):
     with open(os.path.join(dir_path, 'params.yaml'), 'r') as f:
         params = yaml.safe_load(f)
     model_params = params['model_params']
-    print(model_params)
     solver_params = params['solver_params']
     model = CTSCModel(**model_params)
     solver = CTSCSolver(model, **solver_params)
@@ -243,7 +242,6 @@ class CTSCSolver:
             tmax = self.t_max
         if dt is None:
             dt = self.dt
-        print(dt)
         tspan = np.arange(int(tmax / dt))
 
         # Get time interval if number output/soln given
@@ -332,7 +330,6 @@ class CTSCSolver:
     def save_soln(self, soln, dir_path=None):
         if dir_path is None:
             dir_path = self.dir_path
-        print(soln)
         t_last = soln['t'][-1]
         #dir_path = get_timestamped_dir(base_dir=base_dir)
         self.save_hyperparams(dir_path)

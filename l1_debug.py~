@@ -1,0 +1,72 @@
+import torch as th
+import numpy as np
+from ctsc import *
+from loaders import BarsLoader
+from visualization import show_img_XRA, show_batch_img
+import matplotlib.pylab as plt
+from soln_analysis import SolnAnalysis
+
+# Define loader
+N_DIM = 1
+N_BATCH = 100
+N_DICT = 1
+PI = .2
+SIGMA = 1e9
+
+N_S = 50000
+L1 = .2
+
+N_A = 1
+N_S = N_S
+ETA_A = 0.02
+ETA_S = 0.02
+
+# model params
+model_params = dict(
+        n_dict=N_DICT,
+        n_dim=N_DIM,
+        n_batch=N_BATCH,
+        positive=True,
+        pi=1.,
+        l1=L1,
+        sigma=SIGMA,
+        )
+
+EXP = 'lsc'
+assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
+
+# Define model, solver
+model = CTSCModel(**model_params)
+model.A.data[0] = 1
+print(model.A)
+
+solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S, return_params=True)
+
+solver_params['spike_coupling'] = False
+solver_params['asynch'] = True
+solver_params['T_u'] = 1
+model.pi = PI
+
+class DummyLoader():
+    def __init__(self):
+        pass
+    def __call__(self, n_batch=N_BATCH):
+        return th.zeros(n_batch, N_DIM)
+
+loader = DummyLoader()
+solver = CTSCSolver(model, **solver_params)
+soln = solver.solve(loader, soln_T=1)
+
+s = soln['s'][:]
+non_zero = (s > 0)
+T, _, _ = s.shape
+nz_list = []
+for t in np.linspace(0, T, 100, dtype=int):
+    nz_list.append(non_zero[:t].mean())
+
+plt.plot(nz_list)
+plt.show()
+assert False
+show_img_XRA(X, R, A, n_frames=1e2, img_shape=(H, W))
+plt.show()
+
