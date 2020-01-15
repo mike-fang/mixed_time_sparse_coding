@@ -32,7 +32,13 @@ def get_time_interval(tspan, N=None, dt=None):
         idx = np.argmin(np.abs(tspan - n*dt))
         interval[idx] = True
     return interval
-def get_timestamped_dir(load=False, base_dir=None):
+def get_timestamped_dir(load=False, base_dir=None, dir_name=None):
+    if dir_name is not None:
+        dir_name = os.path.join(FILE_DIR, 'results', base_dir, dir_name)
+        if not load:
+            os.makedirs(dir_name)
+        return dir_name
+
     if base_dir is None:
         base_dir = 'tmp'
     if load:

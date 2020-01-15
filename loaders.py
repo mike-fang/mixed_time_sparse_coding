@@ -64,7 +64,8 @@ class StarLoader_(Loader):
         return X
 
 class BarsLoader:
-    def __init__(self, H, W, n_batch, p=0.1, positive=False, test=False, numpy=False, sigma=1):
+    def __init__(self, H, W, n_batch, p=0.1, positive=True, test=False, numpy=False, sigma=1, l1=1):
+        self.l1 = l1
         self.H = H
         self.W = W
         self.im_shape = (H, W)
@@ -83,15 +84,12 @@ class BarsLoader:
             test = True
         if n_batch is None:
             n_batch = self.n_batch
-        S = th.Tensor(n_batch, self.W + self.H).bernoulli_(self.p)
-        multiplier = th.Tensor(n_batch, self.W + self.H).uniform_()
-        if self.positive:
-            multiplier -= 0.5
-        S *= multiplier
         if test:
-            d_min = min(n_batch, self.W + self.H)
+            d_min = min(n_batch, self.n_dict)
             S *= 0
             S[:d_min, :d_min] = th.eye(d_min)
+        else:
+            S = self.get_coeff(n_batch=n_batch)
 
         batch = S @ self.bases
         noise = th.Tensor(batch.shape)
@@ -105,17 +103,32 @@ class BarsLoader:
             return batch.reshape((n_batch, self.H, self.W))
         else:
             return batch
+    def get_coeff(self, n_batch=None):
+        if n_batch is None:
+            n_batch = self.n_batch
+        S = th.Tensor(n_batch, self.n_dict).bernoulli_(self.p)
+        coeff = np.abs(np.random.laplace(0, scale=1/self.l1, size=(n_batch, self.n_dict)))
+        multiplier = th.tensor(coeff)
+        S *= multiplier
+        if not self.positive:
+            flip = th.Tensor(n_batch, self.n_dict).bernoulli_(0.5) * 2 - 1
+            S *= flip
+        return S
     def set_bases(self, flatten=True):
-        bases = th.zeros((self.H + self.W, self.H, self.H))
+        bases = th.zeros((self.H + self.W, self.H, self.W))
         for i in range(self.H):
-            bases[i, i] = 1
+            bases[i, i] = self.W**(-0.5)
         for i in range(self.W):
-            bases[self.H + i, :, i] = 1
+            bases[self.H + i, :, i] = self.H**(-0.5)
+
         if flatten:
             self.bases = bases.reshape((self.H + self.W, -1))
         else:
             self.bases = bases
         return self.bases
+    @property
+    def n_dict(self):
+        return len(self.bases)
     def __call__(self, n_batch=None):
         return self.get_batch(n_batch=n_batch)
     def __repr__(self):
@@ -124,6 +137,92 @@ class BarsLoader:
         desc += f'n_batch: {self.n_batch}\n'
         desc += f'p: {self.p}'
         return desc
+
+class DominosLoader(BarsLoader):
+    def __init__(self, H, W, n_batch, p=0.1, positive=True, test=False, numpy=False, sigma=1, l1=1):
+        super().__init__(H, W, n_batch, p, positive, test, numpy, sigma, l1)
+        self.set_bases()
+    def set_bases(self, flatten=True):
+        #bases = th.zeros((self.n_dict, self.H, self.W))
+        bases = []
+        for x in range(self.W):
+            for y in range(self.H):
+                if x < self.W - 1:
+                    basis = th.zeros((H, W))
+                    basis[y, x] = 1
+                    basis[y, x + 1] = 1
+                    bases.append(basis)
+                if y < self.H - 1:
+                    basis = th.zeros((H, W))
+                    basis[y, x] = 1
+                    basis[y + 1, x] = 1
+                    bases.append(basis)
+        self.bases = th.stack(bases)
+        if flatten:
+            self.bases = self.bases.reshape((self.n_dict, -1))
+        else:
+            self.bases = self.bases
+        return self.bases
+
+class LTileLoader(BarsLoader):
+    def __init__(self, H, W, n_batch, p=0.1, positive=True, test=False, numpy=False, sigma=1, l1=1):
+        super().__init__(H, W, n_batch, p, positive, test, numpy, sigma, l1)
+        self.set_bases()
+    def set_bases(self, flatten=True):
+        #bases = th.zeros((self.n_dict, self.H, self.W))
+        bases = []
+        for x in range(self.W - 1):
+            for y in range(self.H - 1):
+                square = th.zeros((self.H, self.W))
+                square[x, y] = 1
+                square[x + 1, y] = 1
+                square[x, y + 1] = 1
+                square[x + 1, y + 1] = 1
+                for dx in (0, 1):
+                    for dy in (0, 1):
+                        basis = square.clone()
+                        basis[x + dx, y + dy] = 0
+                        bases.append(basis)
+        self.bases = th.stack(bases)
+        if flatten:
+            self.bases = self.bases.reshape((self.n_dict, -1))
+        else:
+            self.bases = self.bases
+        return self.bases
+
+def paint_tile(tile_shape, x, y, coords):
+    basis = th.zeros(tile_shape)
+    for dy, dx in coords:
+        basis[y + dy, x + dx] = 1
+    return basis
+
+class TTileLoader(BarsLoader):
+    def __init__(self, H, W, n_batch, p=0.1, positive=True, test=False, numpy=False, sigma=1, l1=1):
+        super().__init__(H, W, n_batch, p, positive, test, numpy, sigma, l1)
+        self.set_bases()
+    def set_bases(self, flatten=True):
+        #bases = th.zeros((self.n_dict, self.H, self.W))
+        bases = []
+        for x in range(self.W - 1):
+            for y in range(self.H - 1):
+                if y < self.H - 2:
+                    basis = paint_tile((self.H, self.W), x, y, [(0,0), (1,0), (2,0), (1,1)])
+                    bases.append(basis)
+                    basis = paint_tile((self.H, self.W), x, y, [(0,1), (1,1), (2,1), (1,0)])
+                    bases.append(basis)
+                if x < self.W - 2:
+                    basis = paint_tile((self.H, self.W), x, y, [(0,0), (0,1), (0,2), (1,1)])
+                    bases.append(basis)
+                    basis = paint_tile((self.H, self.W), x, y, [(1,0), (1,1), (1,2), (0,1)])
+                    bases.append(basis)
+
+
+        self.bases = th.stack(bases)
+        if flatten:
+            self.bases = self.bases.reshape((self.n_dict, -1))
+        else:
+            self.bases = self.bases
+        return self.bases
 
 class SparseSampler():
     def __init__(self, A, n_batch, pi=0.2, l1=.2, sigma=0, positive=True, coeff='exp'):
@@ -276,11 +375,18 @@ class GaussainSampler():
             return self.sample_buffer(n_batch)
 
 if __name__ == '__main__':
-    H = W = 16
+
+    H = W = 8
     n_batch = 16
     vh_sampler = VanHaterenSampler(H, W, n_batch, buffer_size=1e3)
+    loader = BarsLoader(H, W, n_batch, l1=1, p=0.1, sigma=0.1)
+
+    plt.imshow(loader.bases[0].reshape(H, W))
+    plt.show()
+    assert False
     t0 = time()
-    ims = vh_sampler(16).reshape((16, H, W))
+    print(loader.bases.shape)
+    ims = loader(16).reshape((16, H, W))
     print(time() - t0)
     for n, im in enumerate(ims):
         plt.subplot(4, 4, n+1)

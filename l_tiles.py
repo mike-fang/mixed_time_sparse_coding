@@ -1,7 +1,7 @@
 import torch as th
 import numpy as np
 from ctsc import *
-from loaders import BarsLoader
+from loaders import LTileLoader
 from visualization import show_img_XRA, show_batch_img
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
@@ -18,7 +18,6 @@ def plot_dict():
     #fig.suptitle('Bars Dictionary')
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-
 def plot_samples(pi=.3, l1=1, sigma=0):
     loader = BarsLoader(H, W, 16, l1=l1, p=pi, sigma=sigma, numpy=True)
     x = loader().reshape((-1, 8, 8))
@@ -33,23 +32,22 @@ def plot_samples(pi=.3, l1=1, sigma=0):
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
 # Define loader
-H = W = 8
+H = W = 4
 N_DIM = H * W
-N_BATCH = 2 * (H * W)
-N_DICT = H + W
+N_BATCH = 4 * (H * W)
 PI = 0.3
 SIGMA = .5
 LARGE = False
 N_S = 100
 L1 = 1
-loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=L1)
-EXP = 'ctsc'
+loader = LTileLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=L1)
+N_DICT = loader.n_dict
 
 # DSC params
 if not LARGE:
     N_A = 1000
     N_S = N_S
-    ETA_A = 0.03
+    ETA_A = 0.05
     ETA_S = 0.05
 else:
     N_A = 10
@@ -69,16 +67,16 @@ model_params = dict(
         sigma=SIGMA,
         )
 
+EXP = 'ctsc'
 LOAD = False
 assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
 if LARGE:
-    base_dir = f'bars_large_step_{EXP}'
+    base_dir = f'ltiles_large_step_{EXP}'
 else:
-    base_dir = f'bars_{EXP}'
+    base_dir = f'ltiles_{EXP}'
 
 # Define model, solver
 model = CTSCModel(**model_params)
-#model.A.data = loader.bases.T
 #model.A.data = th.tensor(np.load('./A0.npy'))
 solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S, return_params=True)
 if EXP == 'dsc':
@@ -116,3 +114,4 @@ A = soln['A'][:]
 
 show_img_XRA(X, R, A, n_frames=1e2, img_shape=(H, W))
 plt.show()
+

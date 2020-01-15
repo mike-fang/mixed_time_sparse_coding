@@ -27,9 +27,12 @@ def plot_energy(ds_name, exp_names, save_path=None, skip=1):
 if __name__ == '__main__':
     #plot_energy('vh', ['asynch', '1T'], save_path='auto', skip=1)
     ds_name = 'vh_dim_8'
-    exp = 'dsc'
+    exp = 'lsc'
     if exp == 'dsc':
         title = 'Discrete Sparse Coding'
+    else:
+        title = 'Langevin Sparse Coding'
+
     dir_path = get_timestamped_dir(load=True, base_dir=f'{ds_name}_{exp}')
     analysis = SolnAnalysis(dir_path)
     tau_u = analysis.solver_params['tau_u']

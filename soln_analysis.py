@@ -93,33 +93,32 @@ class SolnAnalysis:
             mean_nz[:smoothing] = mean_nz[smoothing]
         return mean_nz
     def plot_nz_hist(self, title='', last_frac=0.1, s_max=3, eps_s=1e-5, log=True, n_bins=100, ylim=None):
-        pi = self.pi
         l1 = self.l1
-        u0 = -np.log(pi) / l1
 
         S_soln = self.soln['s'][:]
         N_S, _, _ = S_soln.shape
+        print(S_soln.shape)
         S_converged = S_soln[-int(N_S*last_frac):].flatten()
 
         l0_sparsity = (S_converged < eps_s).mean()
 
-        bins = np.linspace(0, s_max / l1)
-        bins[1] = eps_s
+        bins = np.linspace(eps_s, s_max / l1)
+        #bins[1] = eps_s
         #bins = np.insert(bins, 1, eps_s)
         plt.hist(S_converged.flatten(), bins=bins, density=True, fc='grey', ec='black', label='Prob. Distr.')
-        prob_expected = l1 * np.exp(-l1 * (bins + u0))
-        plt.plot(bins, prob_expected, 'r--', label=r'$P_S(s) = \frac{\pi}{\lambda}e^{- \lambda \cdot s}$')
+        prob_expected = l1 * np.exp(-l1 * (bins))
+        plt.plot(bins, prob_expected, 'r--', label=r'$P_S(s) = \lambda e^{- \lambda \cdot s}$')
         if log:
             plt.yscale('log')
         if ylim == 'auto':
-            plt.ylim(0, 1.2 * l1 * pi)
+            plt.ylim(0, 1.2 * l1)
         else:
             plt.ylim(ylim)
         plt.xlim(eps_s, bins[-1])
         plt.ylabel(rf'Distr. of Nonzero Coefficients')
         plt.xlabel(rf'Coeff. Value ($s$); Emperical $P(s > \epsilon_s) = {1-l0_sparsity:.2f}$')
 
-        title += rf' $(\pi = {pi:.2f}, \lambda_1 = {l1:.2f})$'
+        #title += rf' $(\lambda_1 = {l1:.2f})$'
         plt.title(title)
         plt.legend()
     def show_hist_evo(self, t_inter, thresh = 1e-1):
