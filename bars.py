@@ -18,7 +18,6 @@ def plot_dict():
     #fig.suptitle('Bars Dictionary')
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-
 def plot_samples(pi=.3, l1=1, sigma=0):
     loader = BarsLoader(H, W, 16, l1=l1, p=pi, sigma=sigma, numpy=True)
     x = loader().reshape((-1, 8, 8))
@@ -40,22 +39,17 @@ N_DICT = H + W
 PI = 0.3
 SIGMA = .5
 LARGE = False
-N_S = 100
+N_S = 500
 L1 = 1
 loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=L1)
-EXP = 'ctsc'
+EXP = 'lsc'
 
-# DSC params
-if not LARGE:
-    N_A = 1000
-    N_S = N_S
-    ETA_A = 0.03
-    ETA_S = 0.05
-else:
-    N_A = 10
-    N_S = 250
-    ETA_A = 5
-    ETA_S = 0.1
+#N_A = 1000
+N_A = 100
+N_S = N_S
+#ETA_A = 0.03
+ETA_A = 1e-9
+ETA_S = 0.02
 
 
 # model params
@@ -69,50 +63,48 @@ model_params = dict(
         sigma=SIGMA,
         )
 
-LOAD = False
-assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
-if LARGE:
-    base_dir = f'bars_large_step_{EXP}'
-else:
-    base_dir = f'bars_{EXP}'
+for EXP in ['dsc', 'ctsc', 'asynch', 'lsc']:
+    print(EXP)
+    base_dir = f'bars_untrained_{EXP}'
 
-# Define model, solver
-model = CTSCModel(**model_params)
-#model.A.data = loader.bases.T
-#model.A.data = th.tensor(np.load('./A0.npy'))
-solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S, return_params=True)
-if EXP == 'dsc':
-    pass
-elif EXP == 'ctsc':
-    solver_params['spike_coupling'] = False
-elif EXP == 'asynch':
-    solver_params['spike_coupling'] = False
-    solver_params['asynch'] = True
-elif EXP == 'lsc':
-    solver_params['spike_coupling'] = False
-    solver_params['asynch'] = True
-    solver_params['T_u'] = 1
-    model.pi = PI
+    # Define model, solver
+    model = CTSCModel(**model_params)
+    try:
+        model.A.data = np.load('./A_untrained.npy')
+        print('load')
+    except:
+        np.save('./A_untrained.npy', model.A.data.numpy())
+        print('save')
+    #model.A.data = loader.bases.T
+    #model.A.data = th.tensor(np.load('./A0.npy'))
+    solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S, return_params=True)
+    if EXP == 'dsc':
+        pass
+    elif EXP == 'ctsc':
+        solver_params['spike_coupling'] = False
+    elif EXP == 'asynch':
+        solver_params['spike_coupling'] = False
+        solver_params['asynch'] = True
+    elif EXP == 'lsc':
+        solver_params['spike_coupling'] = False
+        solver_params['asynch'] = True
+        solver_params['T_u'] = 1
+        model.pi = PI
 
-# Load or make soln
-if LOAD:
-    dir_path = get_timestamped_dir(load=True, base_dir=base_dir)
-    soln = h5py.File(os.path.join(dir_path, 'soln.h5'))
-else:
+    # Load or make soln
     solver = CTSCSolver(model, **solver_params)
     #dir_path = solver.get_dir_path(base_dir)
     solver.get_dir_path(base_dir)
     soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, out_mse=True)
     solver.save_soln(soln)
+    continue
 
-t = soln['mse_t']
-mse = soln['mse']
-print(t.shape)
-print(mse.shape)
+    t = soln['mse_t']
+    mse = soln['mse']
 
-X = soln['x'][:]
-R = soln['r'][:]
-A = soln['A'][:]
+    X = soln['x'][:]
+    R = soln['r'][:]
+    A = soln['A'][:]
 
-show_img_XRA(X, R, A, n_frames=1e2, img_shape=(H, W))
-plt.show()
+    show_img_XRA(X, R, A, n_frames=1e2, img_shape=(H, W))
+    plt.show()

@@ -50,6 +50,20 @@ class SolnAnalysis:
 
         self.n_t, self.n_batch, self.n_dim = self.X.shape
         _, self.n_dict, _ = self.S.shape
+    def find_thresh(self, rel_tol=10):
+        S = self.S.flatten()
+        Q = np.linspace(0, 1, 1000)
+        QS = np.quantile(S, Q)
+        d_QS = QS[:-1] - QS[1:]
+        rel_dQS = np.abs(d_QS) / np.abs(d_QS[:200]).max()
+        if False:
+            plt.figure()
+            plt.plot(rel_dQS)
+            plt.yscale('log')
+            plt.show()
+        Q_thresh = Q[np.argmax(rel_dQS > rel_tol)]
+        S_thresh = np.quantile(S, Q_thresh)
+        return S_thresh
     def psnr(self):
         X_soln = self.soln['x']
         R_soln = self.soln['r']
@@ -102,9 +116,7 @@ class SolnAnalysis:
 
         l0_sparsity = (S_converged < eps_s).mean()
 
-        bins = np.linspace(eps_s, s_max / l1)
-        #bins[1] = eps_s
-        #bins = np.insert(bins, 1, eps_s)
+        bins = np.linspace(eps_s, s_max / l1, n_bins)
         plt.hist(S_converged.flatten(), bins=bins, density=True, fc='grey', ec='black', label='Prob. Distr.')
         prob_expected = l1 * np.exp(-l1 * (bins))
         plt.plot(bins, prob_expected, 'r--', label=r'$P_S(s) = \lambda e^{- \lambda \cdot s}$')
@@ -135,10 +147,12 @@ class SolnAnalysis:
             n_nonzero = np.sum(nonzero, axis=(1))
             ax.hist(n_nonzero.flatten(), bins=bins, density=True, fc='grey', ec='k')
             ax.set_xticks(bins + 0.5)
-    def zero_coeffs(self, thresh):
+    def zero_coeffs(self, thresh=None):
         S = self.S
         A = self.A
-
+        if thresh is None:
+            thresh = self.find_thresh()
+            print(f'Setting threshold to {thresh:.3f}')
         where_thresh = np.abs(S) < thresh
         Sz = S.copy()
         Sz[where_thresh] = 0
