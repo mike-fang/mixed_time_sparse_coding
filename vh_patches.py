@@ -22,7 +22,7 @@ def vh_loader_model_solver(dim, batch_frac, dict_oc, pi, exp, dsc_params):
             positive=True,
             pi=pi,
             l1=1.0,
-            sigma=1.0,
+            sigma=0.5,
             )
     solver_params = dsc_solver_param(**dsc_params)
     if exp == 'dsc':
@@ -39,25 +39,25 @@ def vh_loader_model_solver(dim, batch_frac, dict_oc, pi, exp, dsc_params):
     return loader, model_params, solver_params
 
 if __name__ == '__main__':
-    N_S = 50
+    N_S = 200
     # DSC params
     dsc_params = dict(
-        n_A = 4000,
+        n_A = 1000,
         n_s = N_S,
-        eta_A = 0.02,
-        eta_s = 0.1,
+        eta_A = 0.05,
+        eta_s = 0.01,
     )
     DIM = 8
     OC = 2
 
     PI = 0.05
 
-    EXP = 'dsc'
+    EXP = 'lsc'
     LOAD = False
     assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
     base_dir = f'vh_dim_{DIM}_{EXP}'
 
-    loader, model_params, solver_params = vh_loader_model_solver(dim=DIM, batch_frac=0.5, dict_oc=OC, dsc_params=dsc_params, pi=PI, exp=EXP)
+    loader, model_params, solver_params = vh_loader_model_solver(dim=DIM, batch_frac=2, dict_oc=OC, dsc_params=dsc_params, pi=PI, exp=EXP)
 
     # Define model, solver
     model = CTSCModel(**model_params)
@@ -71,11 +71,12 @@ if __name__ == '__main__':
         solver = CTSCSolver(model, **solver_params)
         dir_path = solver.get_dir_path(base_dir)
         soln = solver.solve(loader, soln_T=N_S, soln_offset=-1)
-        solver.save_soln(soln)
+        #solver.save_soln(soln)
 
     X = soln['x'][:]
     R = soln['r'][:]
     A = soln['A'][:]
 
     out_path = os.path.join(dir_path, 'evol.mp4')
+    out_path = None
     show_img_XRA(X, R, A, n_frames=1e2, img_shape=(DIM, DIM), out_file=out_path)

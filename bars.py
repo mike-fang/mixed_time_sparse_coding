@@ -39,16 +39,16 @@ N_DICT = H + W
 PI = 0.3
 SIGMA = .5
 LARGE = False
-N_S = 500
+N_S = 200
 L1 = 1
 loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=L1)
-EXP = 'lsc'
+EXP = 'dsc'
 
-#N_A = 1000
-N_A = 100
+N_A = 1000
+#N_A = 100
 N_S = N_S
-#ETA_A = 0.03
-ETA_A = 1e-9
+ETA_A = 0.03
+#ETA_A = 1e-9
 ETA_S = 0.02
 
 
@@ -65,7 +65,7 @@ model_params = dict(
 
 for EXP in ['dsc', 'ctsc', 'asynch', 'lsc']:
     print(EXP)
-    base_dir = f'bars_untrained_{EXP}'
+    base_dir = f'bars_{EXP}'
 
     # Define model, solver
     model = CTSCModel(**model_params)
@@ -93,11 +93,10 @@ for EXP in ['dsc', 'ctsc', 'asynch', 'lsc']:
 
     # Load or make soln
     solver = CTSCSolver(model, **solver_params)
-    #dir_path = solver.get_dir_path(base_dir)
-    solver.get_dir_path(base_dir)
+    dir_path = solver.get_dir_path(base_dir)
+    #solver.get_dir_path(base_dir)
     soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, out_mse=True)
     solver.save_soln(soln)
-    continue
 
     t = soln['mse_t']
     mse = soln['mse']
@@ -106,5 +105,7 @@ for EXP in ['dsc', 'ctsc', 'asynch', 'lsc']:
     R = soln['r'][:]
     A = soln['A'][:]
 
-    show_img_XRA(X, R, A, n_frames=1e2, img_shape=(H, W))
+    out_path = os.path.join(dir_path, 'evol.mp4')
+    show_img_XRA(X, R, A, out_file=out_path, n_frames=1e2, img_shape=(H, W))
+    assert False
     plt.show()

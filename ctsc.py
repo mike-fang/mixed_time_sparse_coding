@@ -353,7 +353,7 @@ class CTSCSolver:
         t_last = self.t_max
         #dir_path = get_timestamped_dir(base_dir=base_dir)
         self.save_hyperparams(dir_path)
-        self.save_checkpoint(t_last, dir_path=dir_path)
+        #self.save_checkpoint(t_last, dir_path=dir_path)
         soln_h5 = h5py.File(os.path.join(dir_path, 'soln.h5'), 'w')
         for k, v in soln.items():
             soln_h5.create_dataset(k, data=v)
