@@ -61,7 +61,7 @@ if True:
     plt.xlabel('Time')
     plt.xlim(0, 1e5)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig('./figures/bars_mse.pdf')
+    #plt.savefig('./figures/bars_mse.pdf')
     plt.show()
 else:
 
