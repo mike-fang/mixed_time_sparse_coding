@@ -5,7 +5,7 @@ from loaders import VanHaterenSampler, GaussainSampler
 from visualization import show_img_XRA
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
-from vh_patches import vh_loader_model_solver
+from vh_patches import vh_loader_solver_param
 
 # DSC params
 dsc_params = dict(
@@ -23,7 +23,7 @@ EXP = '1T'
 
 dict_dir_path = os.path.join('./results/vh_1T/exp_250_100')
 
-loader, model_params, solver_params = vh_loader_model_solver(dim=DIM, batch_frac=0.5, dict_oc=OC, dsc_params=dsc_params, pi=PI, exp=EXP)
+loader, model_params, solver_params = vh_loader_solver_param(dim=DIM, batch_frac=0.5, dict_oc=OC, dsc_params=dsc_params, pi=PI, exp=EXP)
 #loader = GaussainSampler(H=DIM, W=DIM, n_batch=model_params['n_batch'])
 solver_params['tau_A'] = 1e9
 solver_params['T_u'] = 0

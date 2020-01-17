@@ -6,39 +6,21 @@ from visualization import show_img_XRA
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
 
-def vh_loader_model_solver(dim, batch_frac, dict_oc, pi, exp, dsc_params):
-    H = W = dim
-    N_DIM = H * W
-    N_BATCH = int(N_DIM * batch_frac)
-    N_DICT = int(dict_oc * N_DIM)
-    loader = VanHaterenSampler(H, W, N_BATCH)
-    if exp != 'lsc':
-        pi = 1
-
-    model_params = dict(
-            n_dict=N_DICT,
-            n_dim=N_DIM,
-            n_batch=N_BATCH,
-            positive=True,
-            pi=pi,
-            l1=1.0,
-            sigma=0.5,
-            )
-    solver_params = dsc_solver_param(**dsc_params)
-    if exp == 'dsc':
-        pass
-    elif exp == 'ctsc':
-        solver_params['spike_coupling'] = False
-    elif exp == 'asynch':
-        solver_params['spike_coupling'] = False
-        solver_params['asynch'] = True
-    elif exp == 'lsc':
-        solver_params['spike_coupling'] = False
-        solver_params['asynch'] = True
-        solver_params['T_u'] = 1
-    return loader, model_params, solver_params
+def vh_loader_solver_param(dim, batch_frac, dict_oc, pi, exp, dsc_params):
+    return loader, solver_params
 
 if __name__ == '__main__':
+    DIM = 8
+    OC = 2
+    BATCH_FRAC = 2
+    H = W = DIM
+    N_DIM = H * W
+    N_BATCH = int(N_DIM * BATCH_FRAC)
+    N_DICT = int(OC * N_DIM)
+    PI = 0.05
+    EXP = 'lsc'
+    LOAD = False
+
     N_S = 200
     # DSC params
     dsc_params = dict(
@@ -47,21 +29,38 @@ if __name__ == '__main__':
         eta_A = 0.05,
         eta_s = 0.01,
     )
-    DIM = 8
-    OC = 2
+    if EXP != 'lsc':
+        PI = 1
 
-    PI = 0.05
+    model_params = dict(
+            n_dict=N_DICT,
+            n_dim=N_DIM,
+            n_batch=N_BATCH,
+            positive=True,
+            pi=PI,
+            l1=1.0,
+            sigma=0.5,
+            )
 
-    EXP = 'lsc'
-    LOAD = False
     assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
     base_dir = f'vh_dim_{DIM}_{EXP}'
+    loader = VanHaterenSampler(H, W, N_BATCH)
 
-    loader, model_params, solver_params = vh_loader_model_solver(dim=DIM, batch_frac=2, dict_oc=OC, dsc_params=dsc_params, pi=PI, exp=EXP)
+    solver_params = dsc_solver_param(**dsc_params)
+    if EXP == 'dsc':
+        pass
+    elif EXP == 'ctsc':
+        solver_params['spike_coupling'] = False
+    elif EXP == 'asynch':
+        solver_params['spike_coupling'] = False
+        solver_params['asynch'] = True
+    elif EXP == 'lsc':
+        solver_params['spike_coupling'] = False
+        solver_params['asynch'] = True
+        solver_params['T_u'] = 1
 
     # Define model, solver
     model = CTSCModel(**model_params)
-    #solver = CTSCSolver(model, **solver_params)
 
     # Load or make soln
     if LOAD:

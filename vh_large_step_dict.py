@@ -16,7 +16,7 @@ EXP = 'asynch'
 assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
 base_dir = f'vh_large_{EXP}'
 
-loader, model_params, solver_params = vh_loader_model_solver(dim=DIM, batch_frac=2, dict_oc=OC, dsc_params=dsc_params, pi=PI, exp=EXP)
+loader, model_params, solver_params = vh_loader_solver_param(dim=DIM, batch_frac=2, dict_oc=OC, dsc_params=dsc_params, pi=PI, exp=EXP)
 
 # Define model, solver
 model = CTSCModel(**model_params)

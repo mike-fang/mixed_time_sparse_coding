@@ -7,12 +7,13 @@ if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
   let s:wipebuf = bufnr('%')
 endif
 set shortmess=aoO
-badd +5 ~/python_projects/mixed_time_sparse_coding/lca.py
-badd +0 ~/python_projects/mixed_time_sparse_coding/ctsc.py
+badd +9 ~/python_projects/mixed_time_sparse_coding/vh_patches.py
+badd +2 ~/python_projects/mixed_time_sparse_coding/vh_large_step_dict.py
+badd +1 ~/python_projects/mixed_time_sparse_coding/vh_infer.py
 argglobal
 %argdel
-$argadd lca.py
-edit ~/python_projects/mixed_time_sparse_coding/ctsc.py
+$argadd vh_patches.py
+edit ~/python_projects/mixed_time_sparse_coding/vh_patches.py
 set splitbelow splitright
 wincmd t
 set winminheight=0
@@ -28,20 +29,14 @@ setlocal fdl=0
 setlocal fml=1
 setlocal fdn=20
 setlocal fen
-142
+32
 normal! zo
-235
-normal! zo
-364
-normal! zo
-364
-normal! zc
-let s:l = 240 - ((226 * winheight(0) + 26) / 53)
+let s:l = 51 - ((42 * winheight(0) + 26) / 53)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-240
-normal! 09|
+51
+normal! 010|
 tabnext 1
 if exists('s:wipebuf') && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf
