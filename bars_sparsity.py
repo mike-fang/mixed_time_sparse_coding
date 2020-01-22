@@ -41,11 +41,10 @@ def plot_nz_distr():
         plt.savefig(f'./figures/bars_distr_{exp}.pdf', bb_inches='tight')
         plt.show()
 
-def plot_density_evo():
-    colors = ['k', 'g', 'r', 'b']
-    exps = ['dsc', 'ctsc', 'asynch', 'lsc']
+def plot_density_evo(exp_colors, save=True):
     fig = plt.figure(figsize=(8, 3))
-    for c, exp in zip(colors, exps):
+    for exp in exp_colors:
+        c = exp_colors[exp]
         base_dir = f'bars_{exp}'
         dir_path = get_timestamped_dir(load=True, base_dir=base_dir)
         analysis = SolnAnalysis(dir_path)
@@ -57,9 +56,15 @@ def plot_density_evo():
     plt.ylabel('Density')
     plt.xlabel('Time')
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig(f'./figures/bars_density.pdf')
+    if save:
+        plt.savefig(f'./figures/bars_density.pdf')
     plt.show()
 if __name__ == '__main__':
-    plot_nz_distr()
+    exp_colors = {
+            'dsc' : 'k',
+            'lca' : 'r',
+            'lsc' : 'b'
+            }
+    #plot_nz_distr()
     #plot_nz_distr('bars_untrained')
-    #plot_density_evo()
+    plot_density_evo(exp_colors, save=False)

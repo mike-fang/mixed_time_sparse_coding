@@ -34,6 +34,7 @@ def plot_energy(exp, color):
     base_dir = f'bars_{exp}'
     dir_path = get_timestamped_dir(load=True, base_dir=base_dir)
     soln = h5py.File(os.path.join(dir_path, 'soln.h5'))
+    print(base_dir)
     print(soln['A'])
     t = soln['t'][:]
     A = soln['A'][:]
@@ -48,9 +49,9 @@ def plot_energy(exp, color):
     plt.ylim(0, 1)
 
 
-colors = {'dsc': 'black', 'ctsc': 'g', 'asynch': 'r', 'lsc': 'blue'}
+colors = {'dsc': 'black', 'lca': 'r', 'lsc': 'blue'}
 
-if True:
+if False:
     Q = .2
     fig = plt.figure(figsize=(8, 3))
     for exp in colors:
@@ -74,5 +75,5 @@ else:
     plt.xlim(0, 1e5)
     plt.legend(loc=4)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.savefig('./figures/bars_cosine.pdf')
+    #plt.savefig('./figures/bars_cosine.pdf')
     plt.show()

@@ -7,9 +7,8 @@ import matplotlib.pylab as plt
 import seaborn as sns
 
 class SolnAnalysis:
-    def __init__(self, dir_path, lca=False):
+    def __init__(self, dir_path):
         self.dir_path = dir_path
-        self.lca = lca
         with open(os.path.join(dir_path, 'params.yaml'), 'r') as f:
             params = yaml.safe_load(f)
             self.params = params
@@ -19,14 +18,16 @@ class SolnAnalysis:
             self.sigma = params['model_params']['sigma']
         except:
             self.sigma = 1
-        if lca:
-            self.u0 = params['model_params']['u0']
-            self.tau_x = params['solver_params']['n_s']
-            self.l1 = 1
-        else:
+        try:
             self.l1 = params['model_params']['l1']
             self.pi = params['model_params']['pi']
             self.tau_x = params['solver_params']['tau_x']
+            self.lca = False
+        except:
+            self.u0 = params['model_params']['u0']
+            self.tau_x = params['solver_params']['n_s']
+            self.l1 = 1
+            self.lca = True
         self.set_soln()
     def set_soln(self, skip=1, offset=0, batch_idx=None):
         offset = offset % skip
@@ -58,7 +59,7 @@ class SolnAnalysis:
         rel_dQS = np.abs(d_QS) / np.abs(d_QS[:200]).max()
         if False:
             plt.figure()
-            plt.plot(rel_dQS)
+            plt.plot(d_QS)
             plt.yscale('log')
             plt.show()
         Q_thresh = Q[np.argmax(rel_dQS > rel_tol)]

@@ -19,18 +19,19 @@ def load_lca_solver(dir_path):
     return solver
 
 class LCAModel:
-    def __init__(self, n_dim, n_dict, n_batch, sigma=1, u0=1, positive=True):
+    def __init__(self, n_dim, n_dict, n_batch, sigma=1, u0=1, l1=1, positive=True):
         self.params = {k:v for (k, v) in locals().items() if isinstance(v, (int, float, bool))}
         self.sigma = sigma
         self.n_dim = n_dim
         self.n_dict = n_dict
         self.n_batch = n_batch
         self.u0 = u0
+        self.l1 = l1
         self.positive = positive
         self.reset_params()
     def reset_params(self):
         self.A = np.random.normal(0, 1, size=(self.n_dim, self.n_dict))
-        self.u = np.random.normal(0, 5, size=(self.n_dict, self.n_batch))
+        self.u = np.random.normal(0, .1, size=(self.n_dict, self.n_batch))
     @property
     def s(self):
         where_thresh = np.abs(self.u) <= self.u0
@@ -47,6 +48,8 @@ class LCAModel:
         grad = self.A.T @ (self.r.T - x.T) * sign / self.sigma**2 + (self.u - self.s)
         self.u -= eta * grad
     def step_A(self, x, eta, normalize=True):
+        if normalize:
+            self.A /= np.linalg.norm(self.A, axis=0)
         grad = (self.s @ (self.r - x)).T / self.sigma**2
         self.A -= eta * grad / self.n_batch
         if normalize:
@@ -90,7 +93,7 @@ class LCASolver(CTSCSolver):
         # Iterate over tspan
         for t in tqdm(tspan):
             self.model.step_u(x, self.eta_s)
-            if t % self.tau_x == 0:
+            if (t % self.tau_x == 0):
                 self.model.step_A(x, self.eta_A)
                 x = np.array(loader())
 
