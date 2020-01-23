@@ -10,7 +10,7 @@ def plot_density(analysis, name, color, thresh=2e-2):
     time = analysis.time
     plt.plot(time, mean_nz, 'k', color=color, label=name)
 
-def plot_nz_distr():
+def plot_nz_distr):
     colors = ['k', 'g', 'r', 'b']
     exps = ['dsc', 'ctsc', 'asynch', 'lsc']
     #fig = plt.figure(figsize=(8, 3))

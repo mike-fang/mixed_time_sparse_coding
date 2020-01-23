@@ -6,6 +6,7 @@ import os.path
 from soln_analysis import SolnAnalysis
 
 u0_dirs = glob('./results/bars_lca/u0_*')
+print(u0_dirs)
 
 u0_list = []
 pi_list = []
@@ -25,8 +26,5 @@ for d in u0_dirs:
     pi_list.append(pi)
 
 plt.scatter(u0_list, pi_list)
-u0_range = np.linspace(min(u0_list), max(u0_list), 50)
-pi_0 = np.exp(-u0_range)
-plt.plot(u0_range, pi_0)
 
 plt.show()

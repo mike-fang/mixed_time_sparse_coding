@@ -63,47 +63,54 @@ model_params = dict(
         sigma=SIGMA,
         )
 
+for l1 in np.arange(2, 3, .1):
+    l1 = float(round(l1, 2))
+    l1_name = f'l1_{l1:.2f}'.replace('.', 'p')
 
-base_dir = f'bars_{EXP}'
+    model_params['l1'] = l1
 
-# Define model, solver
-model = CTSCModel(**model_params)
-try:
-    model.A.data = np.load('./A_untrained.npy')
-    print('load')
-except:
-    np.save('./A_untrained.npy', model.A.data.numpy())
-    print('save')
-#model.A.data = loader.bases.T
-#model.A.data = th.tensor(np.load('./A0.npy'))
-solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S, return_params=True)
-if EXP == 'dsc':
-    pass
-elif EXP == 'ctsc':
-    solver_params['spike_coupling'] = False
-elif EXP == 'asynch':
-    solver_params['spike_coupling'] = False
-    solver_params['asynch'] = True
-elif EXP == 'lsc':
-    solver_params['spike_coupling'] = False
-    solver_params['asynch'] = True
-    solver_params['T_u'] = 1
-    model.pi = PI
+    base_dir = f'bars_{EXP}'
 
-# Load or make soln
-solver = CTSCSolver(model, **solver_params)
-dir_path = solver.get_dir_path(base_dir)
-#solver.get_dir_path(base_dir)
-soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, out_mse=True)
-solver.save_soln(soln)
+    # Define model, solver
+    model = CTSCModel(**model_params)
+    try:
+        model.A.data = np.load('./A_untrained.npy')
+        print('load')
+    except:
+        np.save('./A_untrained.npy', model.A.data.numpy())
+        print('save')
+    #model.A.data = loader.bases.T
+    #model.A.data = th.tensor(np.load('./A0.npy'))
+    solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S, return_params=True)
+    if EXP == 'dsc':
+        pass
+    elif EXP == 'ctsc':
+        solver_params['spike_coupling'] = False
+    elif EXP == 'asynch':
+        solver_params['spike_coupling'] = False
+        solver_params['asynch'] = True
+    elif EXP == 'lsc':
+        solver_params['spike_coupling'] = False
+        solver_params['asynch'] = True
+        solver_params['T_u'] = 1
+        model.pi = PI
 
-t = soln['mse_t']
-mse = soln['mse']
+    # Load or make soln
+    solver = CTSCSolver(model, **solver_params)
+    dir_path = solver.get_dir_path(base_dir, name=l1_name, overwrite=True)
+    solver.save_hyperparams()
+    #solver.get_dir_path(base_dir)
+    soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, out_mse=True)
+    solver.save_soln(soln)
+    continue
+    t = soln['mse_t']
+    mse = soln['mse']
 
-X = soln['x'][:]
-R = soln['r'][:]
-A = soln['A'][:]
+    X = soln['x'][:]
+    R = soln['r'][:]
+    A = soln['A'][:]
 
-out_path = os.path.join(dir_path, 'evol.mp4')
-out_path = None
-show_img_XRA(X, R, A, out_file=out_path, n_frames=1e2, img_shape=(H, W))
+    out_path = os.path.join(dir_path, 'evol.mp4')
+    out_path = None
+    show_img_XRA(X, R, A, out_file=out_path, n_frames=1e2, img_shape=(H, W))
+

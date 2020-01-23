@@ -56,10 +56,10 @@ class SolnAnalysis:
         Q = np.linspace(0, 1, 1000)
         QS = np.quantile(S, Q)
         d_QS = QS[:-1] - QS[1:]
-        rel_dQS = np.abs(d_QS) / np.abs(d_QS[:200]).max()
+        rel_dQS = np.abs(d_QS) / np.abs(d_QS[:100]).max()
         if False:
             plt.figure()
-            plt.plot(d_QS)
+            plt.plot(rel_dQS)
             plt.yscale('log')
             plt.show()
         Q_thresh = Q[np.argmax(rel_dQS > rel_tol)]
