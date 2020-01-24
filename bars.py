@@ -34,20 +34,20 @@ def plot_samples(pi=.3, l1=1, sigma=0):
 # Define loader
 H = W = 8
 N_DIM = H * W
-N_BATCH = 2 * (H * W)
+N_BATCH = 8 * (H * W)
 N_DICT = H + W
 PI = 0.3
 SIGMA = .5
 LARGE = False
-N_S = 200
-L1 = 1
-loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=L1)
-EXP = 'dsc'
+N_S = 400
+L1 = 1.0
+loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=1)
+EXP = 'lsc'
 
-N_A = 1000
+N_A = 200
 #N_A = 100
 N_S = N_S
-ETA_A = 0.03
+ETA_A = 0.05
 #ETA_A = 1e-9
 ETA_S = 0.02
 
@@ -103,6 +103,12 @@ mse = soln['mse']
 X = soln['x'][:]
 R = soln['r'][:]
 A = soln['A'][:]
+fig, axes = plt.subplots(nrows=4, ncols=4)
+axes = [a for row in axes for a in row]
+for n, ax in enumerate(axes):
+    ax.imshow(A[:, n].reshape(H, W))
+plt.show()
+assert False
 
 out_path = os.path.join(dir_path, 'evol.mp4')
 out_path = None

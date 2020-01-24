@@ -9,8 +9,7 @@ def plot_density(analysis, name, color, thresh=2e-2):
     mean_nz = analysis.mean_nz()
     time = analysis.time
     plt.plot(time, mean_nz, 'k', color=color, label=name)
-
-def plot_nz_distr):
+def plot_nz_distr():
     colors = ['k', 'g', 'r', 'b']
     exps = ['dsc', 'ctsc', 'asynch', 'lsc']
     #fig = plt.figure(figsize=(8, 3))
@@ -40,7 +39,6 @@ def plot_nz_distr):
         plt.title('Trained Dictionary')
         plt.savefig(f'./figures/bars_distr_{exp}.pdf', bb_inches='tight')
         plt.show()
-
 def plot_density_evo(exp_colors, save=True):
     fig = plt.figure(figsize=(8, 3))
     for exp in exp_colors:
@@ -65,6 +63,6 @@ if __name__ == '__main__':
             'lca' : 'r',
             'lsc' : 'b'
             }
-    #plot_nz_distr()
+    plot_nz_distr()
     #plot_nz_distr('bars_untrained')
-    plot_density_evo(exp_colors, save=False)
+    #plot_density_evo(exp_colors, save=False)

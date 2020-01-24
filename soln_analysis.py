@@ -107,13 +107,51 @@ class SolnAnalysis:
             mean_nz[-smoothing:] = mean_nz[-smoothing]
             mean_nz[:smoothing] = mean_nz[smoothing]
         return mean_nz
-    def plot_nz_hist(self, title='', last_frac=0.1, s_max=3, eps_s=1e-5, log=True, n_bins=100, ylim=None):
+    def binned_mean_nz(self, t_bins):
+        N_S, _, _ = self.S.shape
+        fracs = np.linspace(0, 1, t_bins)
+        mnz=[]
+        for start, end in zip(fracs[:-1], fracs[1:]):
+            mnz.append((self.S[int(start * N_S):int(end * N_S)] != 0).mean())
+        return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), mnz
+    def get_dkl_s(self, start=0, end=1, eps_s=1e-5, s_max=6, n_bins=100):
         l1 = self.l1
-
         S_soln = self.soln['s'][:]
         N_S, _, _ = S_soln.shape
-        print(S_soln.shape)
-        S_converged = S_soln[-int(N_S*last_frac):].flatten()
+        S_converged = S_soln[int(N_S*start):int(N_S*end)].flatten()
+
+        l0_sparsity = (S_converged < eps_s).mean()
+
+        bins = np.linspace(eps_s, s_max / l1, n_bins)
+
+        q_i, bin_edge = np.histogram(S_converged.flatten(), bins=bins, density=True)
+        s_i = (bin_edge[1:] + bin_edge[:-1]) / 2
+        ds = bin_edge[1:] - bin_edge[:-1]
+
+        q_i *= ds
+        q_i += 1e-9
+
+        cdf_p = np.exp(-l1 * bin_edge)
+        P_i = -cdf_p[1:] + cdf_p[:-1]
+        p_i = l1 * np.exp(-l1 * s_i)
+        DKL = np.sum(P_i * (np.log(P_i) - np.log(q_i)))
+        return DKL
+    def dkls_history(self, t_bins, n_bins, s_max=6, label=None):
+        fracs = np.linspace(0, 1, t_bins)
+        dkls = []
+        for start, end in zip(fracs[:-1], fracs[1:]):
+            dkls.append(self.get_dkl_s(start=start, s_max=s_max, end=end, n_bins=25))
+        dkls = np.array(dkls)
+
+        
+        return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), dkls
+    def plot_nz_hist(self, title='', start=0, end=1, s_max=3, eps_s=1e-5, log=False, n_bins=100, ylim=None):
+        l1 = self.l1
+        S_soln = self.soln['s'][:]
+        N_S, _, _ = S_soln.shape
+        start_idx = int(N_S * start)
+        end_idx = int(N_S * end)
+        S_converged = S_soln[start_idx:end_idx].flatten()
 
         l0_sparsity = (S_converged < eps_s).mean()
 

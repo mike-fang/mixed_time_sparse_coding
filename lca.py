@@ -1,5 +1,6 @@
 import numpy as np
 from loaders import BarsLoader
+from visualization import show_img_XRA, show_batch_img
 from tqdm import tqdm
 import matplotlib.pylab as plt
 from ctsc import CTSCSolver
@@ -136,25 +137,31 @@ if __name__ == '__main__':
 
     H = W = 8
     N_DIM = H * W
-    N_BATCH = 80
+    N_BATCH = 4 * H * W
     N_DICT = H + W
-    PI = 0.2
-    loader = BarsLoader(H, W, N_BATCH, p=PI, numpy=True)
+    PI = 0.3
+    SIGMA = 0.5
+    loader = BarsLoader(H, W, N_BATCH, sigma=SIGMA, p=PI, numpy=True)
 
-    N_A = 2500
-    N_S = 20
-    eta_A = .1
-    eta_S = 0.1
+    N_A = 200
+    N_S = 200
+    eta_A = 0.1 * 0
+    eta_S = 0.02
 
-    U0 = 0.20
+    U0 = 1
 
-    lca = LCAModel(n_dim=N_DIM, n_dict=N_DICT, n_batch=N_BATCH, u0=U0, positive=True)
+    lca = LCAModel(n_dim=N_DIM, n_dict=N_DICT, n_batch=N_BATCH, sigma=SIGMA, u0=U0, positive=True)
+    #lca.A = np.array(loader.bases).T
     solver = LCASolver(lca, N_A, N_S, eta_A, eta_S)
-    solver.get_dir_path('bars_lca')
+    solver.get_dir_path('bars_lca', name='random_dict')
     soln = solver.solve(loader, soln_T=N_S, soln_offset=-1)
     solver.save_soln(soln)
+    assert False
     
-    A = soln['A'][-1]
+    X = soln['x'][:]
+    R = soln['r'][:]
+    A = soln['A'][:]
+    show_img_XRA(X, R, A, out_file=None, n_frames=1e2, img_shape=(H, W))
     fig, axes = plt.subplots(nrows=4, ncols=4)
     axes = [a for row in axes for a in row]
     for n, ax in enumerate(axes):
