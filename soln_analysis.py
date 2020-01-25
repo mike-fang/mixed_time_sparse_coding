@@ -5,6 +5,7 @@ import torch as th
 import h5py
 import matplotlib.pylab as plt
 import seaborn as sns
+from scipy.stats import norm
 
 class SolnAnalysis:
     def __init__(self, dir_path):
@@ -143,6 +144,32 @@ class SolnAnalysis:
             dkls.append(self.get_dkl_s(start=start, s_max=s_max, end=end, n_bins=25))
         dkls = np.array(dkls)
 
+        
+        return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), dkls
+    def get_dkl_x(self, start=0, end=1, eps_s=1e-5, s_max=5, n_bins=100):
+        sigma = self.sigma
+        X = self.soln['x'][:]
+        R = self.soln['r'][:]
+
+        err = R - X
+        err_seg = err[int(self.n_t * start):int(self.n_t * end)]
+        bins = np.linspace(-s_max * sigma, s_max * sigma, n_bins)
+        q_i, bin_edge = np.histogram(err_seg.flatten(), bins=bins, density=True)
+        dx = bin_edge[1:] - bin_edge[:-1]
+        q_i *= dx
+        q_i += 1e-9
+
+        cdf = norm.cdf(bin_edge/sigma)
+        p_i = cdf[1:] - cdf[:-1]
+
+        DKL = np.sum(p_i * (np.log(p_i) - np.log(q_i)))
+        return DKL
+    def dklx_history(self, t_bins, n_bins, s_max=6, label=None):
+        fracs = np.linspace(0, 1, t_bins)
+        dkls = []
+        for start, end in zip(fracs[:-1], fracs[1:]):
+            dkls.append(self.get_dkl_x(start=start, s_max=s_max, end=end, n_bins=25))
+        dkls = np.array(dkls)
         
         return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), dkls
     def plot_nz_hist(self, title='', start=0, end=1, s_max=3, eps_s=1e-5, log=False, n_bins=100, ylim=None):

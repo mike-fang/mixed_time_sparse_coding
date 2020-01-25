@@ -36,13 +36,14 @@ H = W = 8
 N_DIM = H * W
 N_BATCH = 8 * (H * W)
 N_DICT = H + W
-PI = 0.3
+PI = 0.2
 SIGMA = .5
 LARGE = False
 N_S = 400
 L1 = 1.0
 loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=1)
 EXP = 'lsc'
+NAME = 'wrong_pi_2'
 
 N_A = 200
 #N_A = 100
@@ -62,7 +63,6 @@ model_params = dict(
         l1=L1,
         sigma=SIGMA,
         )
-
 
 base_dir = f'bars_{EXP}'
 
@@ -92,7 +92,7 @@ elif EXP == 'lsc':
 
 # Load or make soln
 solver = CTSCSolver(model, **solver_params)
-dir_path = solver.get_dir_path(base_dir)
+dir_path = solver.get_dir_path(base_dir, name=NAME)
 #solver.get_dir_path(base_dir)
 soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, out_mse=True)
 solver.save_soln(soln)
