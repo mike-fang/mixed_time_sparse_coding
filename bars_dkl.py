@@ -49,13 +49,17 @@ def plot_activity(out=False):
 for exp in exp_colors:
     if '0.1' in exp:
         continue
+    if exp == 'lca':
+        continue
     color = exp_colors[exp]
     name = exp_names[exp]
     dir_path = get_timestamped_dir(load=True, base_dir=f'bars_{exp}')
     analysis = SolnAnalysis(dir_path)
+    plt.subplot(211)
     time, dklx = analysis.dklx_history(t_bins=50, n_bins=50)
-    if exp == 'lsc':
-        time /= 2
+    plt.plot(time, dklx, c=color, label=name)
+    plt.subplot(212)
+    time, dklx = analysis.det_corr_hist(t_bins=50)
     plt.plot(time, dklx, c=color, label=name)
 plt.legend()
 plt.show()

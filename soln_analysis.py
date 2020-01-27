@@ -172,6 +172,33 @@ class SolnAnalysis:
         dkls = np.array(dkls)
         
         return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), dkls
+    def det_corr_x(self, start=0, end=1, n_samp=200, return_mat=False, one_minus=True):
+        sigma = self.sigma
+        X = self.soln['x'][:]
+        R = self.soln['r'][:]
+
+        err = R - X
+        err_seg = err[int(self.n_t * start):int(self.n_t * end)]
+
+        _, _, D = err_seg.shape
+        err_seg = err_seg.reshape((-1, D))
+        corr_mat = np.corrcoef(err_seg.T)
+        det_corr = np.linalg.det(corr_mat)**(1/D)
+        if one_minus:
+            det_corr = 1 - det_corr
+        if return_mat:
+            return det_corr, corr_mat
+        else:
+            return det_corr
+    def det_corr_hist(self, t_bins, n_samp=200):
+        fracs = np.linspace(0, 1, t_bins)
+        det_corr = []
+        for start, end in zip(fracs[:-1], fracs[1:]):
+            print(start)
+            det_corr.append(self.det_corr_x(start=start, end=end, n_samp=n_samp))
+        dkls = np.array(det_corr)
+        
+        return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), dkls
     def plot_nz_hist(self, title='', start=0, end=1, s_max=3, eps_s=1e-5, log=False, n_bins=100, ylim=None):
         l1 = self.l1
         S_soln = self.soln['s'][:]
@@ -232,27 +259,5 @@ class SolnAnalysis:
         self.R = np.transpose(A @ S, axes=(0, 2, 1))
 
 if __name__ == '__main__':
-    dir_path = get_timestamped_dir(load=True, base_dir='bars_dsc')
+    dir_path = get_timestamped_dir(load=True, base_dir='bars_lsc')
     analysis = SolnAnalysis(dir_path)
-    #print(analysis.solver.tau_x)
-    time = analysis.soln['t'][:]
-    energy, recon = analysis.energy()
-    plt.plot(analysis.soln['t'], recon, 'g')
-    plt.yscale('log')
-
-    dir_path = get_timestamped_dir(load=True, base_dir='bars_0T')
-    analysis = SolnAnalysis(dir_path)
-    #print(analysis.solver.tau_x)
-    time = analysis.soln['t'][:]
-    energy, recon = analysis.energy()
-    plt.plot(analysis.soln['t'], recon, 'r')
-
-    dir_path = get_timestamped_dir(load=True, base_dir='bars_asynch')
-    analysis = SolnAnalysis(dir_path)
-    #print(analysis.solver.tau_x)
-    time = analysis.soln['t'][:]
-    energy, recon = analysis.energy()
-    plt.plot(analysis.soln['t'], recon, 'b')
-
-    plt.yscale('log')
-    plt.show()
