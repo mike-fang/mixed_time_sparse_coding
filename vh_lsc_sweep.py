@@ -6,9 +6,12 @@ from visualization import show_img_XRA
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
 
+#TODO more overcomplete
 if __name__ == '__main__':
+    l1_list = np.round(np.arange(0.5, 3, 0.5), 2)
+    pi_list = np.round(np.arange(0.05, 0.5, 0.05), 2)
     DIM = 8
-    OC = 2
+    OC = 4
     BATCH_FRAC = 2
     H = W = DIM
     N_DIM = H * W
@@ -29,11 +32,11 @@ if __name__ == '__main__':
     if EXP != 'lsc':
         PI = 1
 
-    for PI in np.arange(0.05, 0.5, 0.05):
-        for L1 in np.arange(2, 3, 0.5):
+    for PI in pi_list
+        for L1 in l1_list
             PI = round(float(PI), 2)
             L1 = round(float(L1), 2)
-            NAME = f'l1_{L1}_p1_{PI}'.replace('.', 'p')
+            NAME = f'l1_{L1}_pi_{PI}'.replace('.', 'p')
             model_params = dict(
                     n_dict=N_DICT,
                     n_dim=N_DIM,
@@ -45,7 +48,7 @@ if __name__ == '__main__':
                     )
 
             assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
-            base_dir = f'vh_dim_{DIM}_{EXP}'
+            base_dir = f'vh_oc_{OC}_dim_{DIM}_{EXP}'
             loader = VanHaterenSampler(H, W, N_BATCH)
 
             solver_params = dsc_solver_param(**dsc_params)

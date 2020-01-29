@@ -92,10 +92,16 @@ class SolnAnalysis:
         if mean:
             energy = np.mean(energy, axis=1)
         return energy
-    def diff(self):
-        X_soln = self.soln['x']
-        R_soln = self.soln['r']
-        return R_soln - X_soln
+    def err_distr(self, start=0, end=1, skip=1, dim1=0, dim2=1, max_s=2):
+        diff = self.R - self.X
+        start = int(self.n_t * start)
+        end = int(self.n_t * end)
+        print(diff.shape)
+        D1 = diff[start:end:skip, :, dim1]
+        D2 = diff[start:end:skip, :, dim2]
+        g = sns.jointplot(D1, D2, kind='kde')
+        g.ax_marg_x.set_xlim(-max_s, max_s)
+        g.ax_marg_y.set_ylim(-max_s, max_s)
     def mean_nz(self, smoothing=1, thresh=0):
         S_soln = self.soln['s'][:]
         non_zero = np.abs(S_soln) > thresh
@@ -171,30 +177,29 @@ class SolnAnalysis:
         dkls = np.array(dkls)
         
         return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), dkls
-    def det_corr_x(self, start=0, end=1, n_samp=200, return_mat=False, one_minus=True):
+    def get_corr_mat(self, start=0, end=1):
         sigma = self.sigma
         X = self.soln['x'][:]
         R = self.soln['r'][:]
 
         err = R - X
         err_seg = err[int(self.n_t * start):int(self.n_t * end)]
-
-        _, _, D = err_seg.shape
-        err_seg = err_seg.reshape((-1, D))
-        corr_mat = np.corrcoef(err_seg.T)
-        det_corr = np.linalg.det(corr_mat)**(1/D)
+        err_seg = err_seg.reshape((-1, self.n_dim))
+        return np.corrcoef(err_seg.T)
+    def det_corr_x(self, start=0, end=1, return_mat=False, one_minus=True):
+        corr_mat = self.get_corr_mat(start, end)
+        det_corr = np.linalg.det(corr_mat)**(1/self.n_dim)
         if one_minus:
             det_corr = 1 - det_corr
         if return_mat:
             return det_corr, corr_mat
         else:
             return det_corr
-    def det_corr_hist(self, t_bins, n_samp=200):
+    def det_corr_hist(self, t_bins):
         fracs = np.linspace(0, 1, t_bins)
         det_corr = []
         for start, end in zip(fracs[:-1], fracs[1:]):
-            print(start)
-            det_corr.append(self.det_corr_x(start=start, end=end, n_samp=n_samp))
+            det_corr.append(self.det_corr_x(start=start, end=end))
         dkls = np.array(det_corr)
         
         return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), dkls
