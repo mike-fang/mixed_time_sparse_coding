@@ -130,11 +130,10 @@ class SolnAnalysis:
         ds = bin_edge[1:] - bin_edge[:-1]
 
         q_i *= ds
-        q_i += 1e-9
 
         cdf_p = np.exp(-l1 * bin_edge)
         P_i = -cdf_p[1:] + cdf_p[:-1]
-        p_i = l1 * np.exp(-l1 * s_i)
+        P_i /= P_i.sum()
         DKL = np.sum(P_i * (np.log(P_i) - np.log(q_i)))
         return DKL
     def dkls_history(self, t_bins, n_bins, s_max=6, label=None):
@@ -220,8 +219,9 @@ class SolnAnalysis:
         else:
             plt.ylim(ylim)
         plt.xlim(eps_s, bins[-1])
-        plt.ylabel(rf'Distr. of Nonzero Coefficients')
-        plt.xlabel(rf'Coeff. Value ($s$); Emperical $P(s > \epsilon_s) = {1-l0_sparsity:.2f}$')
+        #plt.ylabel(rf'Distr. of Nonzero Coefficients; Activity = {1-l0_sparsity:.2f}')
+        plt.ylabel(rf'Distr. of positive Coeff.')
+        plt.xlabel(rf'Coeff. Value; $P(s_i > 0) = {1-l0_sparsity:.2f}$')
 
         #title += rf' $(\lambda_1 = {l1:.2f})$'
         plt.title(title)

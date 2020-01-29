@@ -13,6 +13,8 @@ dir_path = get_timestamped_dir(load=True, base_dir=base_dir)
 dir_paths = glob(os.path.join('results', 'vh_dim_8_lsc', '*'))
 dir_paths.sort()
 
+print(dir_paths)
+assert False
 
 for n, dir_path in enumerate(dir_paths):
     if n % 2 == 0:

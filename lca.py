@@ -134,26 +134,37 @@ class LCASolver(CTSCSolver):
 
 if __name__ == '__main__':
 
+    DICT = 'learned'
+    NAME = None
 
     H = W = 8
     N_DIM = H * W
-    N_BATCH = 4 * H * W
+    N_BATCH = 8 * H * W
     N_DICT = H + W
     PI = 0.3
     SIGMA = 0.5
     loader = BarsLoader(H, W, N_BATCH, sigma=SIGMA, p=PI, numpy=True)
 
-    N_A = 200
-    N_S = 200
-    eta_A = 0.1 * 0
+    N_A = 400
+    N_S = 400
+    eta_A = 0.05
     eta_S = 0.02
+
+    if DICT == 'learned':
+        NAME = 'learned_dict'
+    elif DICT == 'random':
+        NAME = 'random_dict'
+    if DICT in ['learned', 'random']:
+        N_A = 100
 
     U0 = 1
 
     lca = LCAModel(n_dim=N_DIM, n_dict=N_DICT, n_batch=N_BATCH, sigma=SIGMA, u0=U0, positive=True)
-    #lca.A = np.array(loader.bases).T
+    if DICT == 'learned':
+        lca.A = np.array(loader.bases).T
     solver = LCASolver(lca, N_A, N_S, eta_A, eta_S)
-    solver.get_dir_path('bars_lca', name='random_dict')
+    #solver.get_dir_path('bars_lca')
+    dir_path = solver.get_dir_path('bars_lca', name=NAME, overwrite=True)
     soln = solver.solve(loader, soln_T=N_S, soln_offset=-1)
     solver.save_soln(soln)
     assert False

@@ -1,4 +1,4 @@
-name: mixed_time
+name: lsc
 dependencies:
     - python >= 3.7
     - numpy

@@ -7,13 +7,11 @@ if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
   let s:wipebuf = bufnr('%')
 endif
 set shortmess=aoO
-badd +58 ~/python_projects/mixed_time_sparse_coding/bars_dkl.py
-badd +0 ~/python_projects/mixed_time_sparse_coding/soln_analysis.py
-badd +10 ~/python_projects/mixed_time_sparse_coding/scratch_pad.py
+badd +0 ~/python_projects/mixed_time_sparse_coding/environment.yml
 argglobal
 %argdel
-$argadd bars_dkl.py
-edit ~/python_projects/mixed_time_sparse_coding/soln_analysis.py
+$argadd environment.yml
+edit ~/python_projects/mixed_time_sparse_coding/environment.yml
 set splitbelow splitright
 wincmd t
 set winminheight=0
@@ -21,26 +19,21 @@ set winheight=1
 set winminwidth=0
 set winwidth=1
 argglobal
-setlocal fdm=expr
-setlocal fde=SimpylFold#FoldExpr(v:lnum)
+setlocal fdm=manual
+setlocal fde=0
 setlocal fmr={{{,}}}
 setlocal fdi=#
 setlocal fdl=0
 setlocal fml=1
 setlocal fdn=20
 setlocal fen
-10
-normal! zo
-149
-normal! zo
-234
-normal! zo
-let s:l = 167 - ((134 * winheight(0) + 26) / 53)
+silent! normal! zE
+let s:l = 3 - ((2 * winheight(0) + 26) / 53)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-167
-normal! 0
+3
+normal! 09|
 tabnext 1
 if exists('s:wipebuf') && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf
