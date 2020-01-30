@@ -381,6 +381,16 @@ def show_evol(X, R, A, im_shape, tau_x, t_mult, n_frames=4):
     populate_sgs(gs_X, X, 'x', 'Data')
     populate_sgs(gs_R, R, r'\hat x', 'Reconstruction')
     populate_sgs(gs_A, A, 'A', 'Dictionary', plot_A=True)
+     
+def plot_dict(A, im_shape, nrow=3, ncol=4):
+    A_sub = A.T[:nrow*ncol]
+    cmax = A_sub.max()
+    cmin = A_sub.min()
+    for n, a in enumerate(A_sub):
+        plt.subplot(nrow, ncol, n+1)
+        plt.imshow(a.reshape(im_shape), clim=(cmin, cmax), cmap='Greys_r')
+        plt.xticks([])
+        plt.yticks([])
 
 if __name__ == '__main__':
     soln = Solutions_H5('./results/hv_dsc_4x4/soln.h5')

@@ -49,12 +49,8 @@ class LCAModel:
         grad = self.A.T @ (self.r.T - x.T) * sign / self.sigma**2 + (self.u - self.s)
         self.u -= eta * grad
     def step_A(self, x, eta, normalize=True):
-        if normalize:
-            self.A /= np.linalg.norm(self.A, axis=0)
         grad = (self.s @ (self.r - x)).T / self.sigma**2
         self.A -= eta * grad / self.n_batch
-        if normalize:
-            self.A /= np.linalg.norm(self.A, axis=0)
     def rmse(self, x):
         err = ((self.A @ self.s - x)**2).mean()**0.5
         return err
@@ -73,7 +69,7 @@ class LCASolver(CTSCSolver):
 
         self.model = model
         self.n_batch = model.n_batch
-    def solve(self, loader, tmax=None, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None):
+    def solve(self, loader, tmax=None, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None, normalize_A=True):
         if tmax is None:
             tmax = self.t_max
         tspan = np.arange(tmax)
@@ -91,11 +87,17 @@ class LCASolver(CTSCSolver):
 
         soln = defaultdict(list)
 
+        self.model.A /= np.linalg.norm(self.model.A, axis=0)
         # Iterate over tspan
         for t in tqdm(tspan):
             self.model.step_u(x, self.eta_s)
             if (t % self.tau_x == 0):
+                if normalize_A:
+                    self.model.A /= np.linalg.norm(self.model.A, axis=0)
+
                 self.model.step_A(x, self.eta_A)
+                if normalize_A:
+                    self.model.A /= np.linalg.norm(self.model.A, axis=0)
                 x = np.array(loader())
 
 

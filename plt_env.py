@@ -1,7 +1,8 @@
 import matplotlib.pylab as plt
 import matplotlib
 
-font = {
-        'size'   : 16}
-matplotlib.rc('font', **font)
+
+matplotlib.rcParams['axes.titlesize'] = 20
+matplotlib.rcParams['axes.labelsize'] = 14
+matplotlib.rcParams['legend.fontsize'] = 14
 

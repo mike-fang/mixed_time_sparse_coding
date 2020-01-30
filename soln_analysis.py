@@ -123,9 +123,8 @@ class SolnAnalysis:
         return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), mnz
     def get_dkl_s(self, start=0, end=1, eps_s=1e-5, s_max=6, n_bins=100):
         l1 = self.l1
-        S_soln = self.soln['s'][:]
-        N_S, _, _ = S_soln.shape
-        S_converged = S_soln[int(N_S*start):int(N_S*end)].flatten()
+        N_S, _, _ = self.S.shape
+        S_converged = self.S[int(N_S*start):int(N_S*end)].flatten()
 
         l0_sparsity = (S_converged < eps_s).mean()
 
@@ -134,6 +133,8 @@ class SolnAnalysis:
         q_i, bin_edge = np.histogram(S_converged.flatten(), bins=bins, density=True)
         s_i = (bin_edge[1:] + bin_edge[:-1]) / 2
         ds = bin_edge[1:] - bin_edge[:-1]
+        
+        q_i += 1e-5
 
         q_i *= ds
 
@@ -177,7 +178,18 @@ class SolnAnalysis:
         dkls = np.array(dkls)
         
         return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), dkls
-    def get_corr_mat(self, start=0, end=1):
+    def corr_mat_s(self, start=0, end=1):
+        S = self.S
+        S = S[int(self.n_t * start): int(self.n_t * end)]
+        S = np.transpose(S, (0, 2, 1))
+        S = S.reshape((-1 , self.n_dict))
+        return np.corrcoef(S.T)
+    def det_corr(self, corr_mat, one_minus=True):
+        det_corr = np.linalg.det(corr_mat)**(1/self.n_dim)
+        if one_minus:
+            det_corr = 1 - det_corr
+        return det_corr
+    def corr_mat_x(self, start=0, end=1):
         sigma = self.sigma
         X = self.soln['x'][:]
         R = self.soln['r'][:]
@@ -186,8 +198,8 @@ class SolnAnalysis:
         err_seg = err[int(self.n_t * start):int(self.n_t * end)]
         err_seg = err_seg.reshape((-1, self.n_dim))
         return np.corrcoef(err_seg.T)
-    def det_corr_x(self, start=0, end=1, return_mat=False, one_minus=True):
-        corr_mat = self.get_corr_mat(start, end)
+    def det_corr_x(self, start=0, end=1, one_minus=True):
+        corr_mat = self.corr_mat_x(start, end)
         det_corr = np.linalg.det(corr_mat)**(1/self.n_dim)
         if one_minus:
             det_corr = 1 - det_corr
@@ -195,11 +207,23 @@ class SolnAnalysis:
             return det_corr, corr_mat
         else:
             return det_corr
-    def det_corr_hist(self, t_bins):
+    def corr_x_hist(self, t_bins):
         fracs = np.linspace(0, 1, t_bins)
         det_corr = []
         for start, end in zip(fracs[:-1], fracs[1:]):
-            det_corr.append(self.det_corr_x(start=start, end=end))
+            C = self.corr_mat_x(start, end)
+            det_corr.append(self.det_corr(C))
+            #det_corr.append(self.det_corr_x(start=start, end=end))
+        dkls = np.array(det_corr)
+        
+        return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), dkls
+    def corr_s_hist(self, t_bins):
+        fracs = np.linspace(0, 1, t_bins)
+        det_corr = []
+        for start, end in zip(fracs[:-1], fracs[1:]):
+            C = self.corr_mat_s(start, end)
+            det_corr.append(self.det_corr(C))
+            #det_corr.append(self.det_corr_x(start=start, end=end))
         dkls = np.array(det_corr)
         
         return self.time.max() * 0.5 * (fracs[:-1] + fracs[1:]), dkls

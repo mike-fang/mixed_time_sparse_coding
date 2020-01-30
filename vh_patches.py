@@ -8,13 +8,13 @@ from soln_analysis import SolnAnalysis
 
 if __name__ == '__main__':
     DIM = 8
-    OC = 2
+    OC = 4
     BATCH_FRAC = 2
     H = W = DIM
     N_DIM = H * W
     N_BATCH = int(N_DIM * BATCH_FRAC)
     N_DICT = int(OC * N_DIM)
-    PI = 0.05
+    PI = 0.20
     EXP = 'lsc'
     LOAD = False
 
@@ -42,7 +42,7 @@ if __name__ == '__main__':
             )
 
     assert EXP in ['dsc', 'ctsc', 'asynch', 'lsc']
-    base_dir = f'vh_dim_{DIM}_{EXP}'
+    base_dir = f'vh_oc_{OC}_dim_{DIM}_{EXP}'
     loader = VanHaterenSampler(H, W, N_BATCH)
 
     solver_params = dsc_solver_param(**dsc_params)
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     else:
         solver = CTSCSolver(model, **solver_params)
         dir_path = solver.get_dir_path(base_dir)
-        soln = solver.solve(loader, soln_T=N_S, soln_offset=-1)
+        soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, normalize_A=False)
         solver.save_soln(soln)
 
     X = soln['x'][:]

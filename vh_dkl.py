@@ -5,6 +5,7 @@ from glob import glob
 from plt_env import *
 from collections import defaultdict
 from tqdm import tqdm
+from visualization import plot_dict
 
 def plot_s_dkl(out=False):
     for exp in exp_colors:
@@ -98,19 +99,12 @@ def get_dir_name(idx, return_l1_pi=False):
         return f'results/vh_dim_8_lsc/l1_{l1}_p1_{pi}'.replace('.', 'p'), l1, pi
     else:
         return f'results/vh_dim_8_lsc/l1_{l1}_p1_{pi}'.replace('.', 'p')
-def plot_dict(A, nrow=3, ncol=4):
-    A_sub = A[-1].T[:nrow*ncol]
-    for n, a in enumerate(A_sub):
-        plt.subplot(3, 4, n+1)
-        plt.imshow(a.reshape(8, 8), cmap='Greys_r')
-        plt.xticks([])
-        plt.yticks([])
 def get_min_max_idx(arrs):
     max_idx = np.unravel_index(np.argmax(arrs), arrs.shape)
     min_idx = np.unravel_index(np.argmin(arrs), arrs.shape)
     return min_idx, max_idx
 
-dirs = glob('./results/vh_dim_8_lsc/l1_*')
+dirs = glob('./results/vh_oc_4_dim_8_lsc/l1_*')
 l1_list = np.round(np.arange(0.5, 3, 0.5), 2)
 pi_list = np.round(np.arange(0.05, 0.5, 0.05), 2)
 
@@ -129,8 +123,37 @@ min_s_idx, max_s_idx = get_min_max_idx(dkls_arrs)
 min_x_idx, max_x_idx = get_min_max_idx(dklx_arrs)
 min_c_idx, max_c_idx = get_min_max_idx(corr_arrs)
 
-d, l1, pi = get_dir_name(max_c_idx, return_l1_pi=True)
+if True:
+    plt.subplot(131)
+    plt.title('s')
+    plot_l1_pi_arr(dkls_arrs)
+    plt.subplot(132)
+    plt.title('x')
+    plot_l1_pi_arr(dklx_arrs)
+    plt.subplot(133)
+    plt.title('c')
+    plot_l1_pi_arr(corr_arrs)
+    plt.show()
+    assert False
+
+d, l1, pi = get_dir_name(min_s_idx, return_l1_pi=True)
+print(l1, pi)
 analysis = SolnAnalysis(d)
-time, corr = analysis.det_corr_hist(t_bins=100)
-plt.plot(time, corr)
+A = analysis.A[-1]
+plot_dict(A, (8, 8))
+plt.gcf().suptitle(rf'$\lambda = {l1}; \pi = {pi}$')
+plt.savefig('./figures/vh_min_dkls.pdf')
+plt.show()
+
+assert False
+#time, corr = analysis.det_corr_hist(t_bins=100)
+#plt.plot(time, corr)
+analysis.plot_nz_hist(start=.9)
+plt.show()
+plt.subplot(211)
+t, d = analysis.dkls_history(50, 30)
+plt.plot(t, d)
+plt.subplot(212)
+t, c = analysis.corr_s_hist(50)
+plt.plot(t, c)
 plt.show()

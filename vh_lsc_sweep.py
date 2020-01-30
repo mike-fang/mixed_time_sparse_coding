@@ -32,8 +32,8 @@ if __name__ == '__main__':
     if EXP != 'lsc':
         PI = 1
 
-    for PI in pi_list
-        for L1 in l1_list
+    for PI in pi_list:
+        for L1 in l1_list:
             PI = round(float(PI), 2)
             L1 = round(float(L1), 2)
             NAME = f'l1_{L1}_pi_{PI}'.replace('.', 'p')

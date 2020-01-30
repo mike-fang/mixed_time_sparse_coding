@@ -33,6 +33,26 @@ def plot_s_dkl(out=False):
     plt.xlabel('Time')
     if out:
         plt.savefig('./figures/bars_dkl.pdf')
+def plot_s_corr(out=False):
+    for exp in exp_colors:
+        color = exp_colors[exp]
+        if '0.1' in exp:
+            dir_path = f'./results/bars_lsc/wrong_pi_2'
+        else:
+            dir_path = get_timestamped_dir(load=True, base_dir=f'bars_{exp}')
+
+        analysis = SolnAnalysis(dir_path)
+        analysis.zero_coeffs()
+        time, corr = analysis.corr_s_hist(t_bins=50)
+
+        plt.plot(time, corr, c=color, label=exp_names[exp])
+        plt.ylabel(r'$1 - \det(C)^{1/D}$')
+    plt.legend(loc=1)
+    ax = plt.gca()
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    plt.xlabel('Time')
+    if out:
+        plt.savefig('./figures/bars_corr_s.pdf')
 def plot_activity(out=False):
     for exp in exp_colors:
         color = exp_colors[exp]
@@ -84,7 +104,7 @@ def plot_dkl_x(out=False):
 
 if __name__ == '__main__':
     plt.figure(figsize=(8, 3))
-    #plot_s_dkl(out=True)
-    plot_activity(out=True)
+    #plot_s_dkl(out=False)
+    plot_s_corr(out=True)
     plt.gcf().subplots_adjust(bottom=0.18)
     plt.show()

@@ -243,7 +243,7 @@ class CTSCSolver:
         self.optimizer.step(closure, dt=dt)
         self.pg_A['coupling'] = 0
         self.pg_u['coupling'] = 1
-    def solve(self, loader, tmax=None, dt=None, normalize_A=True, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None, out_mse=False):
+    def solve(self, loader, tmax=None, dt=None, normalize_A=True, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None, out_mse=False, out_energy=False):
         if tmax is None:
             tmax = self.t_max
         if dt is None:
@@ -283,10 +283,16 @@ class CTSCSolver:
             mse_list = []
 
         # Iterate over tspan
+        if out_energy:
+            energy_arr = np.zeros_like(tspan)
+        self.model.A.data = self.model.A / self.model.A.norm(dim=0) 
         for n, t in enumerate(tqdm(tspan)):
             # Optimizer step
             self.optimizer.zero_grad()
-            self.optimizer.step(closure, dt=dt)
+            if out_energy:
+                energy_arr[n] = self.optimizer.step(closure, dt=dt)
+            else:
+                self.optimizer.step(closure, dt=dt)
 
             # Update again if DSC
             batch_size = int(load_n[n].sum())
@@ -319,18 +325,21 @@ class CTSCSolver:
             if save_T is not None and (t % save_T == 0):
                 self.save_checkpoint(t)
 
-
             # Save solution
             if soln_T is not None and ((t - soln_offset) % soln_T == 0):
                 soln['r'].append(self.model.r.clone().data.numpy())
                 soln['u'].append(self.model.u.clone().data.numpy())
                 soln['s'].append(self.model.s.clone().data.numpy())
                 soln['A'].append(self.model.A.clone().data.numpy())
+                print(self.model.A.norm(dim=0).mean())
                 soln['x'].append(x.data.numpy())
                 soln['t'].append(t)
         if out_mse:
             soln['mse_t'] = np.array(mse_t)
             soln['mse'] = np.array(mse_list)
+        if out_energy:
+            soln['energy_t'] = np.array(tspan)
+            soln['energy'] = np.array(energy_arr)
 
         if soln:
             for k, v in soln.items():
