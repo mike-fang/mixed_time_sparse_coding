@@ -33,13 +33,13 @@ def plot_samples(pi=.3, l1=1, sigma=0):
 
 
 DICT = 'none'
-EXP = 'dsc'
+EXP = 'lsc'
 
 # Define loader
 H = W = 8
 N_DIM = H * W
 N_BATCH = 8 * (H * W)
-N_DICT = H + W
+N_DICT = (H + W)
 PI = 0.3
 SIGMA = .5
 LARGE = False

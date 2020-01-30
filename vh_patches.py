@@ -14,14 +14,14 @@ if __name__ == '__main__':
     N_DIM = H * W
     N_BATCH = int(N_DIM * BATCH_FRAC)
     N_DICT = int(OC * N_DIM)
-    PI = 0.20
+    PI = 0.30
     EXP = 'lsc'
     LOAD = False
 
     N_S = 400
     # DSC params
     dsc_params = dict(
-        n_A = 400,
+        n_A = 1500,
         n_s = N_S,
         eta_A = 0.2,
         eta_s = 0.05,
