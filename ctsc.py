@@ -285,7 +285,7 @@ class CTSCSolver:
         # Iterate over tspan
         if out_energy:
             energy_arr = np.zeros_like(tspan)
-        self.model.A.data = self.model.A / self.model.A.norm(dim=0) 
+        self.model.A.data = self.model.A / self.model.A.norm(dim=0).mean()
         for n, t in enumerate(tqdm(tspan)):
             # Optimizer step
             self.optimizer.zero_grad()

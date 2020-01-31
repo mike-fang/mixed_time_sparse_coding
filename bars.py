@@ -2,21 +2,9 @@ import torch as th
 import numpy as np
 from ctsc import *
 from loaders import BarsLoader
-from visualization import show_img_XRA, show_batch_img
+from visualization import show_img_XRA, show_batch_img, plot_dict
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
-
-def plot_dict():
-    A = loader.bases.reshape(-1, 8, 8)
-    fig, axes = plt.subplots(2, 8, figsize=(8, 2))
-    axes = [ax for row in axes for ax in row]
-    for n, ax in enumerate(axes):
-        ax.imshow(A[n], cmap='Greys_r')
-        ax.set_xlabel(rf'$A_{{{n}}}$')
-        ax.set_xticks([])
-        ax.set_yticks([])
-    #fig.suptitle('Bars Dictionary')
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
 def plot_samples(pi=.3, l1=1, sigma=0):
     loader = BarsLoader(H, W, 16, l1=l1, p=pi, sigma=sigma, numpy=True)
@@ -38,28 +26,29 @@ EXP = 'lsc'
 # Define loader
 H = W = 8
 N_DIM = H * W
+OC = 4
 N_BATCH = 8 * (H * W)
-N_DICT = (H + W)
-PI = 0.3
+N_DICT = OC * (H + W)
+PI = 0.2*OC
 SIGMA = .5
 LARGE = False
 N_S = 400
 L1 = 1.0
-loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=1)
+loader = BarsLoader(H, W, N_BATCH, p=PI/OC, sigma=SIGMA, l1=1)
 NAME = 'no_norm_A'
 if DICT == 'learned':
     NAME = 'learned_dict'
 elif DICT == 'random':
     NAME = 'random_dict'
 
-N_A = 400
+N_A = 1000
 if DICT in ['learned', 'random']:
     N_A = 100
 N_S = N_S
 ETA_A = 0.05
 if DICT in ['learned', 'random']:
     ETA_A = 1e-20
-ETA_S = 0.02
+ETA_S = 0.05
 
 
 # model params
@@ -112,13 +101,8 @@ mse = soln['mse']
 X = soln['x'][:]
 R = soln['r'][:]
 A = soln['A'][:]
-if True:
-    fig, axes = plt.subplots(nrows=4, ncols=4)
-    axes = [a for row in axes for a in row]
-    for n, ax in enumerate(axes):
-        ax.imshow(A[-1, :, n].reshape(H, W))
-    plt.show()
-    assert False
+
+plot_dict(A[-1], (8, 8), int(OC * 2), 8)
 
 out_path = os.path.join(dir_path, 'evol.mp4')
 out_path = None
