@@ -8,7 +8,7 @@ from soln_analysis import SolnAnalysis
 
 if __name__ == '__main__':
     DIM = 8
-    OC = 4
+    OC = 2
     BATCH_FRAC = 2
     H = W = DIM
     N_DIM = H * W

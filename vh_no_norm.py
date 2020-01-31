@@ -10,18 +10,21 @@ def plot_dicts(out=False, sort=True):
     A = analysis.A[-1]
     norm = -np.linalg.norm(A, axis=0)
     plot_dict(A[:, norm.argsort()], (8, 8), 8, 16)
-    plt.suptitle('Sorted Learned Dictionary (128/256)')
+    print(A.shape)
+    plt.suptitle('Sorted Learned Dictionary (128/128)')
     if out:
         plt.savefig('./figures/vh_unnormed_dict.pdf', bb_inches='tight')
     plt.show()
 
-dir_path = f'results/vh_oc_4_dim_8_lsc/no_norm_A'
-dir_path = get_timestamped_dir(load=True, base_dir='vh_oc_4_dim_8_lsc')
+#dir_path = f'results/vh_oc_2_dim_8_lsc/no_norm_A'
+dir_path = get_timestamped_dir(load=True, base_dir='vh_oc_2_dim_8_lsc')
 analysis = SolnAnalysis(dir_path)
 
 
-#plot_dicts(out=True)
+plot_dicts(out=False)
+print(analysis.A.shape)
 
+assert False
 
 norm_A = np.linalg.norm(analysis.A, axis=1)
 
