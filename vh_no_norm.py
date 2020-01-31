@@ -21,17 +21,15 @@ dir_path = get_timestamped_dir(load=True, base_dir='vh_oc_2_dim_8_lsc')
 analysis = SolnAnalysis(dir_path)
 
 
-plot_dicts(out=True)
+#plot_dicts(out=True)
 
 norm_A = np.linalg.norm(analysis.A, axis=1)
 
-for q in np.linspace(0, 1, 6, endpoint=True)[::-1]:
-    plt.plot(analysis.time, np.quantile(norm_A, q=q, axis=1), c=(q, 1-q, 1-q), label=np.round(q, 2))
+for norm in norm_A.T:
+    plt.plot(analysis.time, norm, c='k', alpha=.1, lw=.1)
+
 
 #plt.fill_between(analysis.time, norm_low, norm_high, color='grey')
-norm = norm_A[-1]
 #plt.plot(norm[(-norm).argsort()])
-plt.legend()
-plt.savefig('./figures/vh_norm_A.pdf', bb_inches='tight')
+#plt.savefig('./figures/vh_norm_A.pdf', bb_inches='tight')
 plt.show()
-

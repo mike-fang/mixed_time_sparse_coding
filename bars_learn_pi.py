@@ -6,22 +6,6 @@ from visualization import show_img_XRA, show_batch_img, plot_dict
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
 
-def plot_samples(pi=.3, l1=1, sigma=0):
-    loader = BarsLoader(H, W, 16, l1=l1, p=pi, sigma=sigma, numpy=True)
-    x = loader().reshape((-1, 8, 8))
-    fig, axes = plt.subplots(2, 8, figsize=(8, 2))
-    axes = [ax for row in axes for ax in row]
-    for n, ax in enumerate(axes):
-        ax.imshow(x[n], cmap='Greys_r')
-        #ax.set_xlabel(rf'$A_{{{n}}}$')
-        ax.set_xticks([])
-        ax.set_yticks([])
-    #fig.suptitle(fr'Bars Samples: $\lambda = {l1}, \pi = {PI}, \sigma = {sigma}$')
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-
-DICT = 'none'
-EXP = 'lsc'
 
 # Define loader
 H = W = 8
@@ -29,25 +13,16 @@ N_DIM = H * W
 OC = 2
 N_BATCH = 8 * (H * W)
 N_DICT = OC * (H + W)
-PI = 0.2*OC
+PI = 0.2
 SIGMA = .5
 LARGE = False
-N_S = 400
 L1 = 1.0
-loader = BarsLoader(H, W, N_BATCH, p=PI/OC, sigma=SIGMA, l1=1)
+loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=1)
 NAME = 'no_norm_A'
-if DICT == 'learned':
-    NAME = 'learned_dict'
-elif DICT == 'random':
-    NAME = 'random_dict'
 
 N_A = 1000
-if DICT in ['learned', 'random']:
-    N_A = 100
-N_S = N_S
+N_S = 400
 ETA_A = 0.05
-if DICT in ['learned', 'random']:
-    ETA_A = 1e-20
 ETA_S = 0.05
 
 
@@ -57,7 +32,7 @@ model_params = dict(
         n_dim=N_DIM,
         n_batch=N_BATCH,
         positive=True,
-        pi=1,
+        pi=PI,
         l1=L1,
         sigma=SIGMA,
         )

@@ -99,6 +99,7 @@ class CTSCModel(Module):
     def init_params(self):
         self.A = Parameter(th.Tensor(self.n_dim, self.n_dict))
         self.u = Parameter(th.Tensor(self.n_dict, self.n_batch))
+        self.u0 = Parameter(th.tensor(self.u0))
         self.reset_params()
     def reset_params(self):
         self.A.data.normal_()
@@ -110,6 +111,7 @@ class CTSCModel(Module):
     def pi(self, pi):
         self._pi = pi
         self.u0 = - np.log(pi) / self.l1
+        print(pi)
     @property
     def s(self):
         if self.positive:
