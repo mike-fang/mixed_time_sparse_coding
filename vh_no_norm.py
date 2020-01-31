@@ -21,10 +21,7 @@ dir_path = get_timestamped_dir(load=True, base_dir='vh_oc_2_dim_8_lsc')
 analysis = SolnAnalysis(dir_path)
 
 
-plot_dicts(out=False)
-print(analysis.A.shape)
-
-assert False
+plot_dicts(out=True)
 
 norm_A = np.linalg.norm(analysis.A, axis=1)
 
