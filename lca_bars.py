@@ -13,7 +13,7 @@ from lca import *
 
 H = W = 8
 N_DIM = H * W
-N_BATCH = 80
+N_BATCH = 10 * (H * W)
 N_DICT = H + W
 PI = 0.3
 SIGMA = .5
@@ -22,9 +22,9 @@ loader = BarsLoader(H, W, N_BATCH, sigma=0.5, p=PI, numpy=True)
 N_A = 400
 N_S = 400
 eta_A = 0.05
-eta_S = 0.02
+eta_S = 0.05
 
-U0 = 0.5
+U0 = 1
 
 lca = LCAModel(n_dim=N_DIM, n_dict=N_DICT, n_batch=N_BATCH, u0=U0, sigma=SIGMA, positive=True)
 solver = LCASolver(lca, N_A, N_S, eta_A, eta_S)

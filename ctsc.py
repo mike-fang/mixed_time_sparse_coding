@@ -103,15 +103,17 @@ class CTSCModel(Module):
         self.reset_params()
     def reset_params(self):
         self.A.data.normal_()
+        self.A.data /= self.A.norm(dim=0)
+        self.A.data *= th.linspace(0.2, 0.8, self.n_dict)[None, :]
         self.u.data.normal_()
     @property
     def pi(self):
+        return th.exp(-self.l1 * self.u0)
         return self._pi
     @pi.setter
     def pi(self, pi):
         self._pi = pi
         self.u0 = - np.log(pi) / self.l1
-        print(pi)
     @property
     def s(self):
         if self.positive:
@@ -192,7 +194,7 @@ class CTSCSolver:
         solver = cls(model, **solver_params)
         solver.t_max = t_max
         return solver
-    def __init__(self, model, tau_A, tau_u, tau_x, mu_A=0., mu_u=0., T_A=0., T_u=1., asynch=False, spike_coupling=False, tau_A_correction=True, t_max=None, dt=1):
+    def __init__(self, model, tau_A, tau_u, tau_x, mu_A=0., mu_u=0., T_A=0., T_u=1., asynch=False, spike_coupling=False, tau_A_correction=True, t_max=None, dt=1, tau_u0=None, mu_u0=0, T_u0=0):
         self.t_max = t_max
         self.dt = dt
         self.spike_coupling  = spike_coupling
@@ -214,8 +216,15 @@ class CTSCSolver:
                 {'params':[model.A], 'tau':tau_A, 'mu':mu_A, 'T':T_A},
                 {'params':[model.u], 'tau':tau_u, 'mu':mu_u, 'T':T_u},
                 ]
+        if tau_u0 is not None:
+            optim_params.append(
+                {'params':[model.u0], 'tau':tau_u0, 'mu':mu_u, 'T':T_u}
+                    )
         self.optimizer = EulerMaruyama(optim_params)
-        self.pg_A, self.pg_u = self.optimizer.param_groups
+        if tau_u0 is None:
+            self.pg_A, self.pg_u = self.optimizer.param_groups
+        else:
+            self.pg_A, self.pg_u, _ = self.optimizer.param_groups
     def get_dir_path(self, base_dir, load=False, name=None, overwrite=False):
         if name is None:
             dir_path = get_timestamped_dir(load=load, base_dir=base_dir)
@@ -245,7 +254,7 @@ class CTSCSolver:
         self.optimizer.step(closure, dt=dt)
         self.pg_A['coupling'] = 0
         self.pg_u['coupling'] = 1
-    def solve(self, loader, tmax=None, dt=None, normalize_A=True, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None, out_mse=False, out_energy=False):
+    def solve(self, loader, tmax=None, dt=None, normalize_A=True, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None, out_mse=False, out_energy=False, norm_A_init=1):
         if tmax is None:
             tmax = self.t_max
         if dt is None:
@@ -287,7 +296,11 @@ class CTSCSolver:
         # Iterate over tspan
         if out_energy:
             energy_arr = np.zeros_like(tspan)
-        self.model.A.data = self.model.A / self.model.A.norm(dim=0).mean()
+        #self.model.A.data = self.model.A / self.model.A.norm(dim=0).mean() * norm_A_init
+        if False:
+            self.model.A.data = self.model.A / self.model.A.norm(dim=0)
+            #_, n_dict = self.model.A.shape
+            #self.model.A.data *= th.linspace(0.2, 0.8, n_dict)[None, :]
         for n, t in enumerate(tqdm(tspan)):
             # Optimizer step
             self.optimizer.zero_grad()
@@ -333,7 +346,13 @@ class CTSCSolver:
                 soln['u'].append(self.model.u.clone().data.numpy())
                 soln['s'].append(self.model.s.clone().data.numpy())
                 soln['A'].append(self.model.A.clone().data.numpy())
-                print(self.model.A.norm(dim=0).mean())
+                try:
+                    soln['pi'].append(self.model.pi.clone().data.numpy())
+                    print(f'pi : {self.model.pi:.2f}')
+                except:
+                    pass
+                print(f'norm : {self.model.A.norm(dim=0).mean():.2f}')
+                #print(self.model.A.norm(dim=0).mean())
                 soln['x'].append(x.data.numpy())
                 soln['t'].append(t)
         if out_mse:

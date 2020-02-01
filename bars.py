@@ -21,27 +21,27 @@ def plot_samples(pi=.3, l1=1, sigma=0):
 
 
 DICT = 'none'
-EXP = 'lsc'
+EXP = 'dsc'
 
 # Define loader
 H = W = 8
 N_DIM = H * W
-OC = 2
-N_BATCH = 8 * (H * W)
+OC = 1
+N_BATCH = 10 * (H * W)
 N_DICT = OC * (H + W)
-PI = 0.2*OC
+PI = 0.3
 SIGMA = .5
 LARGE = False
-N_S = 400
+N_S = 1000
 L1 = 1.0
-loader = BarsLoader(H, W, N_BATCH, p=PI/OC, sigma=SIGMA, l1=1)
+loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=L1)
 NAME = 'no_norm_A'
 if DICT == 'learned':
     NAME = 'learned_dict'
 elif DICT == 'random':
     NAME = 'random_dict'
 
-N_A = 1000
+N_A = 400
 if DICT in ['learned', 'random']:
     N_A = 100
 N_S = N_S
@@ -106,4 +106,4 @@ plot_dict(A[-1], (8, 8), int(OC * 2), 8)
 
 out_path = os.path.join(dir_path, 'evol.mp4')
 out_path = None
-show_img_XRA(X, R, A, out_file=out_path, n_frames=1e2, img_shape=(H, W))
+#show_img_XRA(X, R, A, out_file=out_path, n_frames=1e2, img_shape=(H, W))

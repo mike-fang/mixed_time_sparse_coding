@@ -33,6 +33,8 @@ class LCAModel:
     def reset_params(self):
         self.A = np.random.normal(0, 1, size=(self.n_dim, self.n_dict))
         self.u = np.random.normal(0, .1, size=(self.n_dict, self.n_batch))
+        self.A /= np.linalg.norm(self.A, axis=0)
+        self.A *= np.linspace(.2, .8, self.n_dict)[None, :]
     @property
     def s(self):
         where_thresh = np.abs(self.u) <= self.u0
@@ -87,7 +89,6 @@ class LCASolver(CTSCSolver):
 
         soln = defaultdict(list)
 
-        self.model.A /= np.linalg.norm(self.model.A, axis=0)
         # Iterate over tspan
         for t in tqdm(tspan):
             self.model.step_u(x, self.eta_s)

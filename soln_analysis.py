@@ -6,6 +6,7 @@ import h5py
 import matplotlib.pylab as plt
 import seaborn as sns
 from scipy.stats import norm
+from visualization import *
 
 class SolnAnalysis:
     def __init__(self, dir_path):
@@ -49,6 +50,11 @@ class SolnAnalysis:
         self.U = self.soln['u']
         self.R = self.soln['r']
         self.A = self.soln['A']
+
+        try:
+            self.pi = self.soln['pi']
+        except:
+            pass
 
         self.n_t, self.n_batch, self.n_dim = self.X.shape
         _, self.n_dict, _ = self.S.shape
@@ -286,6 +292,22 @@ class SolnAnalysis:
         ST = np.transpose(S, axes=(0, 2, 1))
         ST[where_lower] = SzT[where_lower]
         self.R = np.transpose(A @ S, axes=(0, 2, 1))
+    def norm_A(self):
+        return np.linalg.norm(self.A, axis=1)
+    def plot_dict(self, im_size, ncol, nrow):
+        A = self.A[-1]
+        order = (-self.norm_A()[-1]).argsort()
+        plot_dict(A[:, order], im_size, ncol, nrow)
+        plt.subplots_adjust(hspace=.1, wspace=.1, left=.05, right=.95, bottom=.05, top=.95)
+    def plot_dict_norm(self, alpha=.2):
+        plt.ylabel(r'Dict. Element Norm')
+        norm_A = np.linalg.norm(self.A, axis=1)
+        for n, norm in enumerate(norm_A.T[norm_A[-1].argsort()]):
+            q = n / len(norm_A.T)
+            plt.plot(self.time, norm, c='k', alpha=alpha)
+
+
+
 
 if __name__ == '__main__':
     dir_path = get_timestamped_dir(load=True, base_dir='bars_lsc')

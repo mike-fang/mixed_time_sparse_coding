@@ -63,6 +63,61 @@ class StarLoader_(Loader):
         X = self.A * th.cat((cos[:,None], sin[:,None]), dim=1)
         return X
 
+class ZIELoader:
+    def __init__(self, bases, n_batch, pi=0.1, positive=True, numpy=False, sigma=1, l1=1):
+        self.l1 = l1
+        self.n_batch = n_batch
+        self.pi = pi
+        self.positive = positive
+        self.numpy = numpy
+        self.sigma = sigma
+
+        if isinstance(bases, tuple):
+            bases = th.eye(*bases)
+        _, self.n_dim = bases.shape
+        self.bases = bases
+    def get_batch(self, n_batch=None):
+        if n_batch is None:
+            n_batch = self.n_batch
+        S = self.get_coeff(n_batch=n_batch)
+
+        batch = S @ self.bases
+        noise = th.Tensor(batch.shape)
+        noise.normal_()
+        batch += noise * self.sigma
+
+        if self.numpy:
+            batch = np.array(batch)
+        return batch
+    def get_coeff(self, n_batch=None):
+        if n_batch is None:
+            n_batch = self.n_batch
+        S = th.Tensor(n_batch, self.n_dict).bernoulli_(self.pi)
+        coeff = np.abs(np.random.laplace(0, scale=1/self.l1, size=(n_batch, self.n_dict)))
+        multiplier = th.tensor(coeff)
+        S *= multiplier
+        if not self.positive:
+            flip = th.Tensor(n_batch, self.n_dict).bernoulli_(0.5) * 2 - 1
+            S *= flip
+        return S
+    def set_bases(self, flatten=True):
+        bases = th.zeros((self.H + self.W, self.H, self.W))
+        for i in range(self.H):
+            bases[i, i] = self.W**(-0.5)
+        for i in range(self.W):
+            bases[self.H + i, :, i] = self.H**(-0.5)
+
+        if flatten:
+            self.bases = bases.reshape((self.H + self.W, -1))
+        else:
+            self.bases = bases
+        return self.bases
+    @property
+    def n_dict(self):
+        return len(self.bases)
+    def __call__(self, n_batch=None):
+        return self.get_batch(n_batch=n_batch)
+
 class BarsLoader:
     def __init__(self, H, W, n_batch, p=0.1, positive=True, test=False, numpy=False, sigma=1, l1=1):
         self.l1 = l1
@@ -70,7 +125,7 @@ class BarsLoader:
         self.W = W
         self.im_shape = (H, W)
         self.n_batch = n_batch
-        self.p = p
+        self.pi = p
         self.positive = positive
         self.test = test
         self.numpy = numpy
@@ -106,7 +161,7 @@ class BarsLoader:
     def get_coeff(self, n_batch=None):
         if n_batch is None:
             n_batch = self.n_batch
-        S = th.Tensor(n_batch, self.n_dict).bernoulli_(self.p)
+        S = th.Tensor(n_batch, self.n_dict).bernoulli_(self.pi)
         coeff = np.abs(np.random.laplace(0, scale=1/self.l1, size=(n_batch, self.n_dict)))
         multiplier = th.tensor(coeff)
         S *= multiplier
@@ -135,7 +190,7 @@ class BarsLoader:
         desc = 'HVLinesLoader\n'
         desc += f'H, W: {self.H}, {self.W}\n'
         desc += f'n_batch: {self.n_batch}\n'
-        desc += f'p: {self.p}'
+        desc += f'p: {self.pi}'
         return desc
 
 class DominosLoader(BarsLoader):

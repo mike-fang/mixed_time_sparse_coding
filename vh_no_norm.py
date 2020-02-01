@@ -17,19 +17,16 @@ def plot_dicts(out=False, sort=True):
     plt.show()
 
 #dir_path = f'results/vh_oc_2_dim_8_lsc/no_norm_A'
-dir_path = get_timestamped_dir(load=True, base_dir='vh_oc_2_dim_8_lsc')
+dir_path = get_timestamped_dir(load=True, base_dir='vh_learn_pi_oc_2')
 analysis = SolnAnalysis(dir_path)
 
 
-#plot_dicts(out=True)
+plot_dicts(out=False)
 
 norm_A = np.linalg.norm(analysis.A, axis=1)
 
 for norm in norm_A.T:
-    plt.plot(analysis.time, norm, c='k', alpha=.1, lw=.1)
+    plt.plot(analysis.time, norm, c='k', alpha=.2, lw=.1)
 
 
-#plt.fill_between(analysis.time, norm_low, norm_high, color='grey')
-#plt.plot(norm[(-norm).argsort()])
-#plt.savefig('./figures/vh_norm_A.pdf', bb_inches='tight')
 plt.show()
