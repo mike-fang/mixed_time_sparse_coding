@@ -7,6 +7,7 @@ from scipy.io import loadmat
 import matplotlib.pylab as plt
 from time import time
 
+
 class Loader:
     """
     Loader for predetermined data (X), optionally, iid normal noise can be added to data with stdev sigma.
@@ -64,13 +65,19 @@ class StarLoader_(Loader):
         return X
 
 class ZIELoader:
-    def __init__(self, bases, n_batch, pi=0.1, positive=True, numpy=False, sigma=1, l1=1):
+    def __init__(self, bases, n_batch, pi=0.1, positive=True, numpy=False, sigma=1, l1=1, seed=None):
         self.l1 = l1
         self.n_batch = n_batch
         self.pi = pi
         self.positive = positive
         self.numpy = numpy
         self.sigma = sigma
+
+        self.seed = seed
+        if seed is not None:
+            th.manual_seed(seed)
+        self.rng = np.random.RandomState(seed)
+
 
         if isinstance(bases, tuple):
             bases = th.eye(*bases)
@@ -93,7 +100,7 @@ class ZIELoader:
         if n_batch is None:
             n_batch = self.n_batch
         S = th.Tensor(n_batch, self.n_dict).bernoulli_(self.pi)
-        coeff = np.abs(np.random.laplace(0, scale=1/self.l1, size=(n_batch, self.n_dict)))
+        coeff = np.abs(self.rng.laplace(0, scale=1/self.l1, size=(n_batch, self.n_dict)))
         multiplier = th.tensor(coeff)
         S *= multiplier
         if not self.positive:
@@ -116,15 +123,16 @@ class ZIELoader:
     def n_dict(self):
         return len(self.bases)
     def __call__(self, n_batch=None):
-        return self.get_batch(n_batch=n_batch)
+        A =  self.get_batch(n_batch=n_batch)
+        return A
 
 class BarsLoader(ZIELoader):
-    def __init__(self, H, W, n_batch, p=0.1, positive=True, test=False, numpy=False, sigma=1, l1=1):
+    def __init__(self, H, W, n_batch, p=0.1, positive=True, test=False, numpy=False, sigma=1, l1=1, seed=None):
         self.H = H
         self.W = W
         self.im_shape = (H, W)
         bases = self.get_bases()
-        super().__init__(bases, n_batch, pi=p, positive=positive, numpy=numpy, sigma=sigma, l1=l1)
+        super().__init__(bases, n_batch, pi=p, positive=positive, numpy=numpy, sigma=sigma, l1=l1, seed=seed)
     def get_bases(self, flatten=True):
         bases = th.zeros((self.H + self.W, self.H, self.W))
         for i in range(self.H):
@@ -376,12 +384,14 @@ if __name__ == '__main__':
     H = W = 8
     n_batch = 16
     vh_sampler = VanHaterenSampler(H, W, n_batch, buffer_size=1e3)
-    loader = BarsLoader(H, W, n_batch, l1=1, p=0.1, sigma=0.1)
-    t0 = time()
-    print(loader.bases.shape)
-    ims = loader(16).reshape((16, H, W))
-    print(time() - t0)
-    for n, im in enumerate(ims):
-        plt.subplot(4, 4, n+1)
-        plt.imshow(im, cmap='Greys_r')
-    plt.show()
+    loader = BarsLoader(H, W, n_batch, l1=1, p=0.1, sigma=0.1, seed=0)
+    for _ in range(3):
+        t0 = time()
+        ims = loader(16).reshape((16, H, W))
+        x = th.FloatTensor(5)
+        x.uniform_()
+        print(x)
+        for n, im in enumerate(ims):
+            plt.subplot(4, 4, n+1)
+            plt.imshow(im, cmap='Greys_r')
+        plt.show()
