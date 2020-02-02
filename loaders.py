@@ -8,6 +8,7 @@ import matplotlib.pylab as plt
 from time import time
 from visualization import plot_dict
 
+
 class Loader:
     """
     Loader for predetermined data (X), optionally, iid normal noise can be added to data with stdev sigma.
@@ -65,13 +66,19 @@ class StarLoader_(Loader):
         return X
 
 class ZIELoader:
-    def __init__(self, bases, n_batch, pi=0.1, positive=True, numpy=False, sigma=1, l1=1):
+    def __init__(self, bases, n_batch, pi=0.1, positive=True, numpy=False, sigma=1, l1=1, seed=None):
         self.l1 = l1
         self.n_batch = n_batch
         self.pi = pi
         self.positive = positive
         self.numpy = numpy
         self.sigma = sigma
+
+        self.seed = seed
+        if seed is not None:
+            th.manual_seed(seed)
+        self.rng = np.random.RandomState(seed)
+
 
         if isinstance(bases, tuple):
             bases = th.eye(*bases)
@@ -94,7 +101,7 @@ class ZIELoader:
         if n_batch is None:
             n_batch = self.n_batch
         S = th.Tensor(n_batch, self.n_dict).bernoulli_(self.pi)
-        coeff = np.abs(np.random.laplace(0, scale=1/self.l1, size=(n_batch, self.n_dict)))
+        coeff = np.abs(self.rng.laplace(0, scale=1/self.l1, size=(n_batch, self.n_dict)))
         multiplier = th.tensor(coeff)
         S *= multiplier
         if not self.positive:
@@ -117,82 +124,25 @@ class ZIELoader:
     def n_dict(self):
         return len(self.bases)
     def __call__(self, n_batch=None):
-        return self.get_batch(n_batch=n_batch)
+        A =  self.get_batch(n_batch=n_batch)
+        return A
 
-class BarsLoader:
-    def __init__(self, H, W, n_batch, p=0.1, positive=True, test=False, numpy=False, sigma=1, l1=1):
-        self.l1 = l1
+class BarsLoader(ZIELoader):
+    def __init__(self, H, W, n_batch, p=0.1, positive=True, test=False, numpy=False, sigma=1, l1=1, seed=None):
         self.H = H
         self.W = W
         self.im_shape = (H, W)
-        self.n_batch = n_batch
-        self.pi = p
-        self.positive = positive
-        self.test = test
-        self.numpy = numpy
-        self.sigma = sigma
-
-        self.set_bases()
-    def reset(self):
-        pass
-    def get_batch(self, reshape=False, n_batch=None, test=False):
-        if self.test:
-            test = True
-        if n_batch is None:
-            n_batch = self.n_batch
-        if test:
-            d_min = min(n_batch, self.n_dict)
-            S *= 0
-            S[:d_min, :d_min] = th.eye(d_min)
-        else:
-            S = self.get_coeff(n_batch=n_batch)
-
-        batch = S @ self.bases
-        noise = th.Tensor(batch.shape)
-        noise.normal_()
-        batch += noise * self.sigma
-
-        if self.numpy:
-            batch = np.array(batch)
-
-        if reshape:
-            return batch.reshape((n_batch, self.H, self.W))
-        else:
-            return batch
-    def get_coeff(self, n_batch=None):
-        if n_batch is None:
-            n_batch = self.n_batch
-        S = th.Tensor(n_batch, self.n_dict).bernoulli_(self.pi)
-        coeff = np.abs(np.random.laplace(0, scale=1/self.l1, size=(n_batch, self.n_dict)))
-        multiplier = th.tensor(coeff)
-        S *= multiplier
-        if not self.positive:
-            flip = th.Tensor(n_batch, self.n_dict).bernoulli_(0.5) * 2 - 1
-            S *= flip
-        return S
-    def set_bases(self, flatten=True):
+        bases = self.get_bases()
+        super().__init__(bases, n_batch, pi=p, positive=positive, numpy=numpy, sigma=sigma, l1=l1, seed=seed)
+    def get_bases(self, flatten=True):
         bases = th.zeros((self.H + self.W, self.H, self.W))
         for i in range(self.H):
             bases[i, i] = self.W**(-0.5)
         for i in range(self.W):
             bases[self.H + i, :, i] = self.H**(-0.5)
-
         if flatten:
-            self.bases = bases.reshape((self.H + self.W, -1))
-        else:
-            self.bases = bases
-        return self.bases
-    @property
-    def n_dict(self):
-        return len(self.bases)
-    def __call__(self, n_batch=None):
-        return self.get_batch(n_batch=n_batch)
-    def __repr__(self):
-        desc = 'HVLinesLoader\n'
-        desc += f'H, W: {self.H}, {self.W}\n'
-        desc += f'n_batch: {self.n_batch}\n'
-        desc += f'p: {self.pi}'
-        return desc
+            bases = bases.reshape((self.H + self.W, -1))
+        return bases
 
 class DominosLoader(BarsLoader):
     def __init__(self, H, W, n_batch, p=0.1, positive=True, test=False, numpy=False, sigma=1, l1=1):
@@ -441,3 +391,15 @@ if __name__ == '__main__':
     plot_dict(X.T, (8, 8), 8, 8, sort=False)
     plt.tight_layout()
     plt.savefig('./figures/vh_data.png')
+    assert False
+    loader = BarsLoader(H, W, n_batch, l1=1, p=0.1, sigma=0.1, seed=0)
+    for _ in range(3):
+        t0 = time()
+        ims = loader(16).reshape((16, H, W))
+        x = th.FloatTensor(5)
+        x.uniform_()
+        print(x)
+        for n, im in enumerate(ims):
+            plt.subplot(4, 4, n+1)
+            plt.imshow(im, cmap='Greys_r')
+        plt.show()
