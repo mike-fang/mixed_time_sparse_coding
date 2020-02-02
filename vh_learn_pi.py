@@ -7,19 +7,19 @@ import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
 
 DIM = 8
-OC = 2
+OC = 8
 BATCH_FRAC = 2
 H = W = DIM
 N_DIM = H * W
 N_BATCH = int(N_DIM * BATCH_FRAC)
 N_DICT = int(OC * N_DIM)
-PI = 0.1
+PI = 0.02
 LOAD = False
 
 N_S = 400
 # DSC params
 dsc_params = dict(
-    n_A = 1000,
+    n_A = 3000,
     n_s = N_S,
     eta_A = .05,
     eta_s = 0.05,
@@ -48,7 +48,7 @@ solver_params['tau_u0'] = 1e6
 
 # Define model, solver
 model = CTSCModel(**model_params)
-model.A.data *= 2
+model.A.data *= 1.4
 
 solver = CTSCSolver(model, **solver_params)
 dir_path = solver.get_dir_path(base_dir)

@@ -6,6 +6,7 @@ import h5py
 from scipy.io import loadmat
 import matplotlib.pylab as plt
 from time import time
+from visualization import plot_dict
 
 class Loader:
     """
@@ -432,18 +433,11 @@ class GaussainSampler():
 if __name__ == '__main__':
 
     H = W = 8
-    n_batch = 16
+    n_batch = 64
     vh_sampler = VanHaterenSampler(H, W, n_batch, buffer_size=1e3)
-    loader = BarsLoader(H, W, n_batch, l1=1, p=0.1, sigma=0.1)
 
-    plt.imshow(loader.bases[0].reshape(H, W))
-    plt.show()
-    assert False
-    t0 = time()
-    print(loader.bases.shape)
-    ims = loader(16).reshape((16, H, W))
-    print(time() - t0)
-    for n, im in enumerate(ims):
-        plt.subplot(4, 4, n+1)
-        plt.imshow(im, cmap='Greys_r')
-    plt.show()
+    X = vh_sampler()
+    plt.figure(figsize=(8, 8))
+    plot_dict(X.T, (8, 8), 8, 8, sort=False)
+    plt.tight_layout()
+    plt.savefig('./figures/vh_data.png')

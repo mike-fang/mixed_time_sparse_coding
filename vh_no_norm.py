@@ -9,9 +9,9 @@ from soln_analysis import SolnAnalysis
 def plot_dicts(out=False, sort=True):
     A = analysis.A[-1]
     norm = -np.linalg.norm(A, axis=0)
-    plot_dict(A[:, norm.argsort()], (8, 8), 8, 16)
+    plot_dict(A[:, norm.argsort()], (8, 8), 8, 8)
     print(A.shape)
-    plt.suptitle('Sorted Learned Dictionary (128/128)')
+    #plt.suptitle('Sorted Learned Dictionary (128/128)')
     if out:
         plt.savefig('./figures/vh_unnormed_dict.pdf', bb_inches='tight')
     plt.show()
@@ -29,17 +29,19 @@ def plot_pi(out=False, pi=None):
     plt.show()
 
 #dir_path = f'results/vh_oc_2_dim_8_lsc/no_norm_A'
-dir_path = get_timestamped_dir(load=True, base_dir='vh_learn_pi_oc_2')
+
+dir_path = get_timestamped_dir(load=True, base_dir='vh_learn_pi_oc_1')
 analysis = SolnAnalysis(dir_path)
 
 
-plot_dicts(out=False)
-plot_pi()
+
+plot_dicts(out=True)
+plot_pi(True)
 
 norm_A = np.linalg.norm(analysis.A, axis=1)
-
 for norm in norm_A.T:
     plt.plot(analysis.time, norm, c='k', alpha=.9, lw=.1)
-
-
+plt.tight_layout()
+plt.savefig('./figures/norm_evo.pdf', bb_inches='tight')
 plt.show()
+
