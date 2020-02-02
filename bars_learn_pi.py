@@ -62,7 +62,7 @@ solver_params['tau_u0'] = 1e30
 solver = CTSCSolver(model, **solver_params)
 dir_path = solver.get_dir_path(base_dir, name=NAME, overwrite=True)
 #solver.get_dir_path(base_dir)
-soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, out_energy=False, normalize_A=False, norm_A_init=.1)
+soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, out_energy=False, normalize_A=True, norm_A_init=.1)
 solver.save_soln(soln)
 
 X = soln['x'][:]

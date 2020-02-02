@@ -19,13 +19,14 @@ def plot_lsc_A_norm(out=False):
     plt.show()
 def plot_lsc_pi(out=False, pi=None):
     plt.figure(figsize = (8,4))
-    plt.plot(analysis.time, analysis.pi, 'k')
+    plt.plot(analysis.time, analysis.pi, 'k', label='Model Activity')
     if pi is not None:
-        plt.plot(analysis.time, [pi,] * len(analysis.time), 'r--')
+        plt.plot(analysis.time, [pi,] * len(analysis.time), 'r--', label='Data Activity')
     plt.ylabel(r'Activity ($\pi$)')
     plt.xlabel('Time')
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.tight_layout()
+    plt.legend()
     if out:
         plt.savefig('./figures/lsc_pi', bb_inches='tight')
     plt.show()
@@ -46,10 +47,11 @@ lsc_path = f'results/bars_learn_pi/fixed_pi'
 if True:
     analysis = SolnAnalysis(lsc_path)
     plot_lsc_A_norm(False)
-    plot_lsc_pi(False, pi=0.3)
+    plot_lsc_pi(True, pi=0.3)
     plot_lsc_dict(False)
 
 
+    assert False
 
 #plt.subplot(212)
 plt.figure(figsize=(8, 4))
@@ -84,5 +86,5 @@ plt.fill_between([], [], [],color='grey', alpha=0.4, label='20%-80% range')
 plt.xlabel('Time / Iterations')
 plt.legend()
 plt.tight_layout()
-#plt.savefig('figures/dict_norm.pdf', bb_inches='tight')
+plt.savefig('figures/dict_norm_compare.pdf', bb_inches='tight')
 plt.show()
