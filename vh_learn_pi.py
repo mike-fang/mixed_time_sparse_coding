@@ -6,8 +6,8 @@ from visualization import show_img_XRA, plot_dict
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
 
-DIM = 8
-OC = 8
+DIM = 16
+OC = 2
 BATCH_FRAC = 2
 H = W = DIM
 N_DIM = H * W

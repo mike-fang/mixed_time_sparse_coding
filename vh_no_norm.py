@@ -30,8 +30,11 @@ def plot_pi(out=False, pi=None):
 
 #dir_path = f'results/vh_oc_2_dim_8_lsc/no_norm_A'
 
-dir_path = get_timestamped_dir(load=True, base_dir='vh_learn_pi_oc_1')
+dir_path = get_timestamped_dir(load=True, base_dir='vh_learn_pi_oc_2')
 analysis = SolnAnalysis(dir_path)
+
+A = analysis.A[-1]
+np.save('./oc2A.npy', A)
 
 
 

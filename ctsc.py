@@ -350,8 +350,8 @@ class CTSCSolver:
                     soln['pi'].append(self.model.pi.clone().data.numpy())
                 except:
                     pass
-                #print(f'pi : {self.model.pi:.2f}')
-                #print(f'norm : {self.model.A.norm(dim=0).mean():.2f}')
+                print(f'pi : {self.model.pi:.2f}')
+                print(f'norm : {self.model.A.norm(dim=0).mean():.2f}')
                 soln['x'].append(x.data.numpy())
                 soln['t'].append(t)
         if out_mse:
