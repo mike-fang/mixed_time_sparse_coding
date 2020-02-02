@@ -24,6 +24,8 @@ class SolnAnalysis:
             self.l1 = params['model_params']['l1']
             self.pi = params['model_params']['pi']
             self.tau_x = params['solver_params']['tau_x']
+            self.tau_s = params['solver_params']['tau_u']
+            self.tau_A = params['solver_params']['tau_A']
             self.lca = False
         except:
             self.u0 = params['model_params']['u0']
