@@ -10,7 +10,7 @@ from soln_analysis import SolnAnalysis
 # Define loader
 H = W = 8
 N_DIM = H * W
-OC = 1
+OC = 2
 N_BATCH = 10 * (H * W)
 N_DICT = OC * (H + W)
 PI = 0.3
@@ -20,12 +20,12 @@ L1 = 1.0
 loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=L1)
 NAME = 'no_norm_A'
 NAME = 'learn_pi'
-#NAME = 'fixed_pi'
+NAME = 'fixed_pi'
 
 
 N_A = 400
-N_S = 1000
-ETA_A = 0.2
+N_S = 400
+ETA_A = 0.1
 ETA_S = 0.05
 
 # model params
@@ -34,7 +34,7 @@ model_params = dict(
         n_dim=N_DIM,
         n_batch=N_BATCH,
         positive=True,
-        pi=.5,
+        pi=PI,
         l1=L1,
         sigma=SIGMA,
         )
@@ -54,7 +54,7 @@ solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=E
 solver_params['spike_coupling'] = False
 solver_params['asynch'] = True
 solver_params['T_u'] = 1
-solver_params['tau_u0'] = 1e7
+solver_params['tau_u0'] = 1e30
 #model.pi = PI
 #model.A.data = loader.bases.T/2
 

@@ -2,7 +2,7 @@ import torch as th
 import numpy as np
 from ctsc import *
 from loaders import VanHaterenSampler
-from visualization import show_img_XRA
+from visualization import show_img_XRA, plot_dict
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
 
@@ -13,15 +13,15 @@ H = W = DIM
 N_DIM = H * W
 N_BATCH = int(N_DIM * BATCH_FRAC)
 N_DICT = int(OC * N_DIM)
-PI = 0.3
+PI = 0.1
 LOAD = False
 
 N_S = 400
 # DSC params
 dsc_params = dict(
-    n_A = 2500,
+    n_A = 1000,
     n_s = N_S,
-    eta_A = 0.2,
+    eta_A = .05,
     eta_s = 0.05,
 )
 
@@ -34,7 +34,7 @@ model_params = dict(
         positive=True,
         pi=PI,
         l1=1,
-        sigma=1,
+        sigma=.5,
         )
 
 base_dir = f'vh_learn_pi_oc_{OC}'
@@ -44,15 +44,20 @@ solver_params = dsc_solver_param(**dsc_params)
 solver_params['spike_coupling'] = False
 solver_params['asynch'] = False
 solver_params['T_u'] = 1
-solver_params['tau_u0'] = 1e7
+solver_params['tau_u0'] = 1e6
 
 # Define model, solver
 model = CTSCModel(**model_params)
+model.A.data *= 2
 
 solver = CTSCSolver(model, **solver_params)
 dir_path = solver.get_dir_path(base_dir)
 soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, normalize_A=False)
 solver.save_soln(soln)
+
+A = soln['A'][:]
+plot_dict(A[-1], (8, 8), int(OC * 2), 8)
+plt.show()
 
 assert False
 X = soln['x'][:]

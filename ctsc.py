@@ -104,7 +104,7 @@ class CTSCModel(Module):
     def reset_params(self):
         self.A.data.normal_()
         self.A.data /= self.A.norm(dim=0)
-        self.A.data *= th.linspace(0.2, 0.8, self.n_dict)[None, :]
+        #self.A.data *= th.linspace(0.1, 0.5, self.n_dict)[None, :]
         self.u.data.normal_()
     @property
     def pi(self):

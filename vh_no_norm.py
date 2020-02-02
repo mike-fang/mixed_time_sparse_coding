@@ -15,6 +15,18 @@ def plot_dicts(out=False, sort=True):
     if out:
         plt.savefig('./figures/vh_unnormed_dict.pdf', bb_inches='tight')
     plt.show()
+def plot_pi(out=False, pi=None):
+    plt.figure(figsize = (8,4))
+    plt.plot(analysis.time, analysis.pi, 'k')
+    if pi is not None:
+        plt.plot(analysis.time, [pi,] * len(analysis.time), 'r--')
+    plt.ylabel(r'Activity ($\pi$)')
+    plt.xlabel('Time')
+    plt.gcf().subplots_adjust(bottom=0.15)
+    plt.tight_layout()
+    if out:
+        plt.savefig('./figures/lsc_pi', bb_inches='tight')
+    plt.show()
 
 #dir_path = f'results/vh_oc_2_dim_8_lsc/no_norm_A'
 dir_path = get_timestamped_dir(load=True, base_dir='vh_learn_pi_oc_2')
@@ -22,11 +34,12 @@ analysis = SolnAnalysis(dir_path)
 
 
 plot_dicts(out=False)
+plot_pi()
 
 norm_A = np.linalg.norm(analysis.A, axis=1)
 
 for norm in norm_A.T:
-    plt.plot(analysis.time, norm, c='k', alpha=.2, lw=.1)
+    plt.plot(analysis.time, norm, c='k', alpha=.9, lw=.1)
 
 
 plt.show()

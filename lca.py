@@ -34,7 +34,7 @@ class LCAModel:
         self.A = np.random.normal(0, 1, size=(self.n_dim, self.n_dict))
         self.u = np.random.normal(0, .1, size=(self.n_dict, self.n_batch))
         self.A /= np.linalg.norm(self.A, axis=0)
-        self.A *= np.linspace(.2, .8, self.n_dict)[None, :]
+        #self.A *= np.linspace(.2, .8, self.n_dict)[None, :]
     @property
     def s(self):
         where_thresh = np.abs(self.u) <= self.u0
@@ -118,6 +118,8 @@ class LCASolver(CTSCSolver):
                 soln['A'].append(np.copy(self.model.A))
                 soln['x'].append(x)
                 soln['t'].append(t)
+
+                print(f'norm : {np.linalg.norm(self.model.A, axis=0).mean():.2f}')
 
         if soln:
             for k, v in soln.items():

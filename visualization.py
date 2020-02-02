@@ -382,8 +382,12 @@ def show_evol(X, R, A, im_shape, tau_x, t_mult, n_frames=4):
     populate_sgs(gs_R, R, r'\hat x', 'Reconstruction')
     populate_sgs(gs_A, A, 'A', 'Dictionary', plot_A=True)
      
-def plot_dict(A, im_shape, nrow=3, ncol=4):
+def plot_dict(A, im_shape, nrow=3, ncol=4, sort=True):
     A_sub = A.T[:nrow*ncol]
+    if sort:
+        order = (-np.linalg.norm(A_sub, axis=1)).argsort()
+        print
+        A_sub = A_sub[(-np.linalg.norm(A_sub, axis=1)).argsort()]
     cmax = A_sub.max()
     cmin = A_sub.min()
     for n, a in enumerate(A_sub):
