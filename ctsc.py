@@ -245,8 +245,11 @@ class CTSCSolver:
         else:
             #load_idx = (tspan % self.tau_x == self.tau_x-1)
             load_idx = (tspan % self.tau_x == 0)
-
-            where_load[np.argwhere(load_idx)] = 1
+            if th.__version__ == '1.1.0':
+                print('Pytorch 1.1.0')
+                where_load[np.argwhere(load_idx)] = 1
+            else:
+                where_load[load_idx] = 1
         return where_load
     def step_A_only(self, closure, dt):
         self.optimizer.zero_grad()

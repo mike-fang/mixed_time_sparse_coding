@@ -1,4 +1,4 @@
+import numpy as np
 import torch as th
 
-bases = (5, 3)
-print(th.eye(*bases))
+print(th.__version__)
