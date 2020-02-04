@@ -1,9 +1,5 @@
-import matplotlib.pylab as plt
-import numpy as np
-import h5py
-from glob import glob
-import os.path
-from soln_analysis import SolnAnalysis
+import bars_lca_u0_sparsity
+from bars_lca_u0_sparsity import *
 
 l1_dirs = glob('./results/bars_dsc/pi_*')
 
@@ -47,8 +43,8 @@ where_3 = c_list == 'b'
 where_1 = c_list == 'r'
 
 
-plt.errorbar(l1_list[where_3], pi_list[where_3], err_list[:, where_3], c='b', fmt='o', label=r'Data Activity: $\pi = 0.3$')
-plt.errorbar(l1_list[where_1], pi_list[where_1], err_list[:, where_1], c='r', fmt='o', label=r'Data Activity: $\pi = 0.1$')
+plt.errorbar(l1_list[where_3], pi_list[where_3], err_list[:, where_3], c='b', fmt='^', label=r'DSC: $\pi = 0.3$')
+plt.errorbar(l1_list[where_1], pi_list[where_1], err_list[:, where_1], c='r', fmt='^', label=r'DSC: $\pi = 0.1$')
 #plt.scatter(l1_list[where_3], pi_list[where_3], c='b', label=r'Data Activity: $\pi = 0.3$')
 #plt.scatter(l1_list[where_1], pi_list[where_1], c='r', label=r'Data Activity: $\pi = 0.1$')
 
@@ -58,5 +54,5 @@ plt.xlabel(r'$\lambda$')
 plt.ylabel(r'Inference Activity')
 plt.legend()
 plt.ylim(0.00, .45)
-#plt.savefig('./figures/bars_dsc_l1.pdf', bb_inches='tight')
-
+plt.savefig('./figures/bars_lca_dsc_sparsity.pdf', bb_inches='tight')
+plt.show()

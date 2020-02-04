@@ -49,7 +49,6 @@ def get_grid_axes(n_axes, ratio=1.5):
                     )
             ax.set_xticks([])
             ax.set_yticks([])
-
 def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
     """
         params: The parameter to visualize, should be reshaped to be (n_frame_total, n_sparse_total, n_dim1, n_dim2).
@@ -101,7 +100,6 @@ def show_img_evo(params, n_frames=None, n_comps=None, ratio=1.5, out_file=None):
         anim.save(out_file)
     else:
         plt.show()
-
 def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=None, N_batch=None, N_dict=None):
     """
         params: The parameter to visualize, should be reshaped to be (n_frame_total, n_sparse_total, n_dim1, n_dim2).
@@ -196,7 +194,6 @@ def show_img_XRA(X, R, A, img_shape=None, n_frames=None, ratio=1.5, out_file=Non
         anim.save(out_file)
     else:
         plt.show()
-
 def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None, show_xmodel=False, show_smodel=False):
     X = soln['x']
     S = soln['s']
@@ -266,7 +263,6 @@ def show_2d_evo(soln, n_frames=100, overlap=3, f_out=None, show_xmodel=False, sh
     if f_out is not None:
         anim.save(f_out)
     plt.show()
-
 def show_2d_evo_no_model(soln, n_frames=100, overlap=3, f_out=None):
     X = soln['x']
     S = soln['s']
@@ -326,7 +322,6 @@ def show_2d_evo_no_model(soln, n_frames=100, overlap=3, f_out=None):
     if f_out is not None:
         anim.save(f_out)
     plt.show()
-
 def show_evol(X, R, A, im_shape, tau_x, t_mult, n_frames=4):
     def remove_border(ax):
         for pos in ['top', 'bottom', 'left', 'right']:
@@ -381,7 +376,6 @@ def show_evol(X, R, A, im_shape, tau_x, t_mult, n_frames=4):
     populate_sgs(gs_X, X, 'x', 'Data')
     populate_sgs(gs_R, R, r'\hat x', 'Reconstruction')
     populate_sgs(gs_A, A, 'A', 'Dictionary', plot_A=True)
-     
 def plot_dict(A, im_shape, nrow=3, ncol=4, sort=True):
     A_sub = A.T[:nrow*ncol]
     if sort:
@@ -395,6 +389,35 @@ def plot_dict(A, im_shape, nrow=3, ncol=4, sort=True):
         plt.imshow(a.reshape(im_shape), clim=(cmin, cmax), cmap='Greys_r')
         plt.xticks([])
         plt.yticks([])
+def animate_dict(A, n_frames, ratio=1.5):
+    n_time, n_dim, n_dict = A.shape
+    skip = n_time // n_frames
+    order = (-np.linalg.norm(A[-1], axis=0)).argsort()
+
+    cmin = -min(-A.min(), A.max())
+    cmax = -cmin
+
+    nrows = ((n_dict/ratio)**0.5)
+    ncols = int(np.ceil(n_dict / nrows))
+    nrows = int(np.ceil(nrows))
+
+    fig, axes = plt.subplots(nrows, ncols)
+    axes = [ax for row in axes for ax in row]
+    img_plots = []
+    for ax in axes:
+        img_plots.append(ax.imshow([[0]], clim=(cmin, cmax), cmap='gray'))
+        ax.set_xticks([])
+        ax.set_yticks([])
+    
+    def animate(n):
+        print(n)
+        for i, a in enumerate(A[n * skip].T[order]):
+            a = a.reshape((8, 8))
+            img_plots[i].set_data(a)
+        fig.suptitle(n)
+
+    anim = animation.FuncAnimation(fig, animate, frames=n_frames, interval=100, repeat=True)
+    plt.show()
 
 if __name__ == '__main__':
     soln = Solutions_H5('./results/hv_dsc_4x4/soln.h5')

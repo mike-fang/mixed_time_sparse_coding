@@ -47,8 +47,8 @@ where_3 = c_list == 'b'
 where_1 = c_list == 'r'
 
 
-plt.errorbar(u0_list[where_3], pi_list[where_3], err_list[:, where_3], c='b', fmt='o', label=r'Data Activity: $\pi = 0.3$')
-plt.errorbar(u0_list[where_1], pi_list[where_1], err_list[:, where_1], c='r', fmt='o', label=r'Data Activity: $\pi = 0.1$')
+plt.errorbar(u0_list[where_3], pi_list[where_3], err_list[:, where_3], c='b', fmt='o', label=r'LCA: $\pi = 0.3$')
+plt.errorbar(u0_list[where_1], pi_list[where_1], err_list[:, where_1], c='r', fmt='o', label=r'LCA: $\pi = 0.1$')
 #plt.scatter(u0_list[where_3], pi_list[where_3], c='b', label=r'Data Activity: $\pi = 0.3$')
 #plt.scatter(u0_list[where_1], pi_list[where_1], c='r', label=r'Data Activity: $\pi = 0.1$')
 
@@ -58,6 +58,5 @@ plt.xlabel(r'$\lambda$')
 plt.ylabel(r'Inference Activity')
 plt.legend()
 plt.ylim(0.00, .45)
-plt.savefig('./figures/bars_lca_u0.pdf', bb_inches='tight')
+#plt.savefig('./figures/bars_lca_u0.pdf', bb_inches='tight')
 
-plt.show()

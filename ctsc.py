@@ -245,7 +245,8 @@ class CTSCSolver:
         else:
             #load_idx = (tspan % self.tau_x == self.tau_x-1)
             load_idx = (tspan % self.tau_x == 0)
-            where_load[load_idx] = 1
+
+            where_load[np.argwhere(load_idx)] = 1
         return where_load
     def step_A_only(self, closure, dt):
         self.optimizer.zero_grad()
@@ -255,6 +256,10 @@ class CTSCSolver:
         self.pg_A['coupling'] = 0
         self.pg_u['coupling'] = 1
     def solve(self, loader, tmax=None, dt=None, normalize_A=True, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None, out_mse=False, out_energy=False, norm_A_init=1):
+        if self.model.A.is_cuda:
+            device = 'cuda'
+        else:
+            device = 'cpu'
         if tmax is None:
             tmax = self.t_max
         if dt is None:
@@ -270,7 +275,9 @@ class CTSCSolver:
             soln_T = max(tmax // soln_N, 1)
 
         # Get initial data x
-        x = loader()
+        print('---')
+        print(device)
+        x = loader().to(device)
 
         # Define closure for solver
         def closure():
@@ -329,7 +336,7 @@ class CTSCSolver:
                     mse_t.append(t)
                 #TODO: remove this stupid switcharoo
                 x_ = x.clone()
-                x_.data[where_load] = loader(n_batch=batch_size).view(batch_size, 1, -1)
+                x_.data[where_load] = loader(n_batch=batch_size).to(device).view(batch_size, 1, -1)
                 x = x_
 
             # Call callback function
@@ -342,17 +349,22 @@ class CTSCSolver:
 
             # Save solution
             if soln_T is not None and ((t - soln_offset) % soln_T == 0):
-                soln['r'].append(self.model.r.clone().data.numpy())
-                soln['u'].append(self.model.u.clone().data.numpy())
-                soln['s'].append(self.model.s.clone().data.numpy())
-                soln['A'].append(self.model.A.clone().data.numpy())
+
+                soln['r'].append(clone_numpy(self.model.r))
+                soln['u'].append(clone_numpy(self.model.u))
+                soln['s'].append(clone_numpy(self.model.s))
+                soln['A'].append(clone_numpy(self.model.A))
                 try:
-                    soln['pi'].append(self.model.pi.clone().data.numpy())
+                    soln['pi'].append(clone_numpy(self.model.pi))
                 except:
                     pass
                 print(f'pi : {self.model.pi:.2f}')
                 print(f'norm : {self.model.A.norm(dim=0).mean():.2f}')
-                soln['x'].append(x.data.numpy())
+                try:
+                    soln['x'].append(x.data.numpy())
+                except:
+                    soln['x'].append(x.cpu().data.numpy())
+
                 soln['t'].append(t)
         if out_mse:
             soln['mse_t'] = np.array(mse_t)
@@ -413,6 +425,10 @@ class CTSCSolver:
         if load_optim:
             self.optimizer.load_state_dict(checkpoint['optim_sd'])
         return checkpoint, t_load
+def clone_numpy(tensor):
+    if tensor.is_cuda:
+        tensor = tensor.to('cpu')
+    return tensor.clone().data.numpy()
 
 if __name__ == '__main__':
     from loaders import BarsLoader, VanHaterenSampler

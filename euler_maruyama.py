@@ -74,6 +74,8 @@ class EulerMaruyama(Optimizer):
                         eta = self.state[p]['noise'][self.noise_idx]
                     else:
                         eta = th.FloatTensor(p.shape).normal_()
+                    if p.is_cuda:
+                        eta = eta.to('cuda')
 
                 if mu != 0:
                     # Step momentum if there is mass

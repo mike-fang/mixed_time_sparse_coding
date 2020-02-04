@@ -28,7 +28,7 @@ def plot_nz_distr(out=False):
 
         if exp != 'lsc':
             analysis.zero_coeffs()
-        analysis.plot_nz_hist(s_max=4, title=None, n_bins=50, log=False, eps_s=5e-2, ylim=(0, 1.8))
+        analysis.plot_nz_hist(s_max=6, title=None, n_bins=50, log=False, eps_s=5e-2, ylim=(0, 1.8))
 
         plt.title('Random Dictionary')
         plt.subplot(122)
@@ -37,7 +37,7 @@ def plot_nz_distr(out=False):
 
         if exp != 'lsc':
             analysis.zero_coeffs()
-        analysis.plot_nz_hist(s_max=4, title=None, n_bins=50, log=False, eps_s=5e-2, ylim=(0, 1.8))
+        analysis.plot_nz_hist(s_max=6, title=None, n_bins=50, log=False, eps_s=5e-2, ylim=(0, 1.8))
 
         plt.subplots_adjust(hspace=.5)
         plt.title('Trained Dictionary')
@@ -69,6 +69,6 @@ if __name__ == '__main__':
             'lca' : 'r',
             'lsc' : 'b'
             }
-    plot_nz_distr(out=True)
+    plot_nz_distr(out=False)
     #plot_nz_distr('bars_untrained')
     #plot_density_evo(exp_colors, save=False)

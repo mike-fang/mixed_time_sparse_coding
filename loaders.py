@@ -66,13 +66,14 @@ class StarLoader_(Loader):
         return X
 
 class ZIELoader:
-    def __init__(self, bases, n_batch, pi=0.1, positive=True, numpy=False, sigma=1, l1=1, seed=None):
+    def __init__(self, bases, n_batch, pi=0.1, positive=True, numpy=False, sigma=1, l1=1, seed=None, cuda=False):
         self.l1 = l1
         self.n_batch = n_batch
         self.pi = pi
         self.positive = positive
         self.numpy = numpy
         self.sigma = sigma
+        self.cuda = cuda
 
         self.seed = seed
         if seed is not None:
@@ -103,7 +104,7 @@ class ZIELoader:
         S = th.Tensor(n_batch, self.n_dict).bernoulli_(self.pi)
         coeff = np.abs(self.rng.laplace(0, scale=1/self.l1, size=(n_batch, self.n_dict)))
         multiplier = th.tensor(coeff)
-        S *= multiplier
+        S *= multiplier.float()
         if not self.positive:
             flip = th.Tensor(n_batch, self.n_dict).bernoulli_(0.5) * 2 - 1
             S *= flip
@@ -125,6 +126,8 @@ class ZIELoader:
         return len(self.bases)
     def __call__(self, n_batch=None):
         A =  self.get_batch(n_batch=n_batch)
+        if self.cuda:
+            A = A.to('cuda')
         return A
 
 class BarsLoader(ZIELoader):
@@ -283,7 +286,7 @@ class StarLoader(SparseSampler):
         return th.cat((cos[None, :], sin[None, :]), dim=0)
 
 class VanHaterenSampler():
-    def __init__(self, H, W, n_batch, flatten=True, torch=True, buffer_size=0):
+    def __init__(self, H, W, n_batch, flatten=True, torch=True, buffer_size=0, cuda=False):
         #self.img_ds = h5py.File('./vanhateren_imc/images.h5', 'a')[str(ds_size)]
         self.img_ds = h5py.File('./vanhateren_imc/images_bao.h5', 'r')['images']
         self.H = H
@@ -292,6 +295,7 @@ class VanHaterenSampler():
         self.flatten = flatten 
         self.torch = torch
         self.buffer = int(buffer_size)
+        self.cuda = cuda
         if self.buffer > 0:
             assert self.buffer > n_batch
             self.reset_buffer()
@@ -328,6 +332,8 @@ class VanHaterenSampler():
             sample_arr = sample_arr.reshape((n_batch, -1))
         if self.torch:
             sample_arr = th.tensor(sample_arr).float()
+        if self.cuda:
+            sample_arr = sample_arr.to('cuda')
         return sample_arr
     def __call__(self, n_batch=None):
         if n_batch is None:
@@ -386,11 +392,12 @@ if __name__ == '__main__':
     n_batch = 64
     vh_sampler = VanHaterenSampler(H, W, n_batch, buffer_size=1e3)
 
-    X = vh_sampler()
+    X = np.array(vh_sampler())
     plt.figure(figsize=(8, 8))
     plot_dict(X.T, (8, 8), 8, 8, sort=False)
     plt.tight_layout()
-    plt.savefig('./figures/vh_data.png')
+    #plt.savefig('./figures/vh_data.png')
+    plt.show()
     assert False
     loader = BarsLoader(H, W, n_batch, l1=1, p=0.1, sigma=0.1, seed=0)
     for _ in range(3):
