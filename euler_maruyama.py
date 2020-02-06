@@ -45,7 +45,6 @@ class EulerMaruyama(Optimizer):
             tau = group['tau']
             du =  group['coupling'] * dt / tau
 
-
             for p in group['params']:
                 param_state = self.state[p]
                 if 'momentum' not in param_state:

@@ -32,7 +32,8 @@ def plot_lsc_pi(out=False, pi=None):
     plt.show()
 def plot_lsc_dict(out=False):
     plt.figure(figsize=(8, 4))
-    analysis.plot_dict((8, 8), 4, 8)
+    A = analysis.A[-1]
+    plot_dict(A, (8, 8), 4, 8)
     if out:
         plt.savefig('./figures/lsc_dict.pdf', bb_inches='tight')
     plt.show()
@@ -47,7 +48,7 @@ lsc_path = f'results/bars_learn_pi/fixed_pi'
 if True:
     analysis = SolnAnalysis(lsc_path)
     plot_lsc_A_norm(False)
-    plot_lsc_pi(True, pi=0.3)
+    plot_lsc_pi(False, pi=0.3)
     plot_lsc_dict(False)
 
 

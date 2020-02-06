@@ -1,4 +1,6 @@
 import numpy as np
 import torch as th
 
-print(th.__version__)
+s = th.FloatTensor(100000)
+s.exponential_()
+print(s.mean())

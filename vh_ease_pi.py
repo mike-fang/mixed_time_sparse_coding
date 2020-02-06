@@ -6,42 +6,41 @@ from visualization import show_img_XRA, plot_dict
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
 
-
 DIM = 8
-OC = 2
+OC = 4
 BATCH_FRAC = 2
 H = W = DIM
 N_DIM = H * W
 N_BATCH = int(N_DIM * BATCH_FRAC)
 N_DICT = int(OC * N_DIM)
-PI = 0.5
-FIX_PI = True
 
-N_S = 200
+N_S = 400
 # DSC params
 dsc_params = dict(
     n_A = 3000,
     n_s = N_S,
-    eta_A = 0.02,
+    eta_A = 0.01,
     eta_s = 0.05,
 )
 
-PI = round(float(PI), 2)
-print(PI)
 model_params = dict(
         n_dict=N_DICT,
         n_dim=N_DIM,
         n_batch=N_BATCH,
         positive=True,
-        pi=PI,
+        pi=.50,
         l1=1,
-        sigma=.2,
+        sigma=.3,
         )
 
-fixed_dir = f'vh_learn_pi_dim_{DIM}_oc_{OC}_fixed_pi'
-d = get_timestamped_dir(load=True, base_dir=fixed_dir)
+load_dir = f'vh_learn_pi_dim_{DIM}_oc_{OC}_fixed_pi'
+load_dir = f'vh_learn_pi_dim_{DIM}_oc_{OC}_ease_pi'
+d = get_timestamped_dir(load=True, base_dir=load_dir)
 analysis = SolnAnalysis(d)
+pi = analysis.pi[-1]
 A_load = analysis.A[-1]
+model_params['pi'] = pi
+ 
 ease_dir = f'vh_learn_pi_dim_{DIM}_oc_{OC}_ease_pi'
 loader = VanHaterenSampler(H, W, N_BATCH)
 
@@ -49,7 +48,7 @@ solver_params = dsc_solver_param(**dsc_params)
 solver_params['spike_coupling'] = False
 solver_params['asynch'] = False
 solver_params['T_u'] = 1
-solver_params['tau_u0'] = 1e8
+solver_params['tau_u0'] = 5e7
 
 # Define model, solver
 model = CTSCModel(**model_params)

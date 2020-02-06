@@ -42,7 +42,8 @@ def get_timestamped_dir(load=False, base_dir=None, dir_name=None):
     if base_dir is None:
         base_dir = 'tmp'
     if load:
-        tmp_files = glob(os.path.join(FILE_DIR, 'results', base_dir, 'exp_*'))
+        search_str = os.path.join(FILE_DIR, 'results', base_dir, 'exp_*')
+        tmp_files = glob(search_str)
         tmp_files.sort()
         dir_name = tmp_files[-1]
     else:
@@ -81,6 +82,10 @@ def dsc_solver_param(n_A, n_s, eta_A, eta_s):
     solver = cls(model, **solver_params)
     solver.t_max = t_max
     return solver
+def clone_numpy(tensor):
+    if tensor.is_cuda:
+        tensor = tensor.to('cpu')
+    return tensor.clone().data.numpy()
 
 class CTSCModel(Module):
     def __init__(self, n_dim, n_dict, n_batch, positive=False, sigma=1, l1=1, pi=0.5):
@@ -258,7 +263,7 @@ class CTSCSolver:
         self.optimizer.step(closure, dt=dt)
         self.pg_A['coupling'] = 0
         self.pg_u['coupling'] = 1
-    def solve(self, loader, tmax=None, dt=None, normalize_A=True, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None, out_mse=False, out_energy=False, norm_A_init=1):
+    def solve(self, loader, tmax=None, dt=None, normalize_A=True, soln_N=None, soln_T=None, soln_offset=0, save_N=None, save_T=None, callback_freq=None, callback_fn=None, out_mse=False, out_energy=False, norm_A_init=1, report_norm_pi=False):
         if self.model.A.is_cuda:
             device = 'cuda'
         else:
@@ -361,8 +366,9 @@ class CTSCSolver:
                     soln['pi'].append(clone_numpy(self.model.pi))
                 except:
                     pass
-                print(f'pi : {self.model.pi:.2f}')
-                print(f'norm : {self.model.A.norm(dim=0).mean():.2f}')
+                if report_norm_pi:
+                    print(f'pi : {self.model.pi:.2f}')
+                    print(f'norm : {self.model.A.norm(dim=0).mean():.2f}')
                 try:
                     soln['x'].append(x.data.numpy())
                 except:
@@ -428,10 +434,6 @@ class CTSCSolver:
         if load_optim:
             self.optimizer.load_state_dict(checkpoint['optim_sd'])
         return checkpoint, t_load
-def clone_numpy(tensor):
-    if tensor.is_cuda:
-        tensor = tensor.to('cpu')
-    return tensor.clone().data.numpy()
 
 if __name__ == '__main__':
     from loaders import BarsLoader, VanHaterenSampler

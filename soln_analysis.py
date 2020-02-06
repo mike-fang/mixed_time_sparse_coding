@@ -22,7 +22,7 @@ class SolnAnalysis:
             self.sigma = 1
         try:
             self.l1 = params['model_params']['l1']
-            self.pi = params['model_params']['pi']
+            #self.pi = params['model_params']['pi']
             self.tau_x = params['solver_params']['tau_x']
             self.tau_s = params['solver_params']['tau_u']
             self.tau_A = params['solver_params']['tau_A']
@@ -298,9 +298,9 @@ class SolnAnalysis:
         return np.linalg.norm(self.A, axis=1)
     def plot_dict(self, im_size, ncol, nrow):
         A = self.A[-1]
-        order = (-self.norm_A()[-1]).argsort()
         plot_dict(A[:, order], im_size, ncol, nrow)
-        plt.subplots_adjust(hspace=.1, wspace=.1, left=.05, right=.95, bottom=.05, top=.95)
+        plt.tight_layout()
+        #plt.subplots_adjust(hspace=.1, wspace=.1, left=.05, right=.95, bottom=.05, top=.95)
     def plot_dict_norm(self, alpha=.2):
         plt.ylabel(r'Dict. Element Norm')
         norm_A = np.linalg.norm(self.A, axis=1)

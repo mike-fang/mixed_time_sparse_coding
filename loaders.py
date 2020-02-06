@@ -102,9 +102,10 @@ class ZIELoader:
         if n_batch is None:
             n_batch = self.n_batch
         S = th.Tensor(n_batch, self.n_dict).bernoulli_(self.pi)
-        coeff = np.abs(self.rng.laplace(0, scale=1/self.l1, size=(n_batch, self.n_dict)))
-        multiplier = th.tensor(coeff)
-        S *= multiplier.float()
+        E = th.Tensor(n_batch, self.n_dict).exponential_() / self.l1
+        #coeff = np.abs(self.rng.laplace(0, scale=1/self.l1, size=(n_batch, self.n_dict)))
+        #multiplier = th.tensor(coeff)
+        S *= E
         if not self.positive:
             flip = th.Tensor(n_batch, self.n_dict).bernoulli_(0.5) * 2 - 1
             S *= flip
@@ -394,7 +395,7 @@ if __name__ == '__main__':
 
     X = np.array(vh_sampler())
     plt.figure(figsize=(8, 8))
-    plot_dict(X.T, (8, 8), 8, 8, sort=False)
+    plot_dict(X.T, (8, 8), 8, 8, order=False)
     plt.tight_layout()
     #plt.savefig('./figures/vh_data.png')
     plt.show()

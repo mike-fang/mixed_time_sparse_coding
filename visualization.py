@@ -376,23 +376,33 @@ def show_evol(X, R, A, im_shape, tau_x, t_mult, n_frames=4):
     populate_sgs(gs_X, X, 'x', 'Data')
     populate_sgs(gs_R, R, r'\hat x', 'Reconstruction')
     populate_sgs(gs_A, A, 'A', 'Dictionary', plot_A=True)
-def plot_dict(A, im_shape, nrow=3, ncol=4, sort=True):
+def plot_dict(A, im_shape, nrow=3, ncol=4, order=True):
     A_sub = A.T[:nrow*ncol]
-    if sort:
+    if order is True:
         order = (-np.linalg.norm(A_sub, axis=1)).argsort()
-        print
         A_sub = A_sub[(-np.linalg.norm(A_sub, axis=1)).argsort()]
     cmax = A_sub.max()
     cmin = A_sub.min()
+    max_size = 8
+    if ncol > nrow:
+        W = 8
+        H = 8 * nrow / ncol
+    else:
+        H = 8
+        W = 8 * ncol / nrow
+    fig, axes = plt.subplots(nrow, ncol, figsize=(W, H))
+    axes = [ax for row in axes for ax in row]
     for n, a in enumerate(A_sub):
-        plt.subplot(nrow, ncol, n+1)
-        plt.imshow(a.reshape(im_shape), clim=(cmin, cmax), cmap='Greys_r')
-        plt.xticks([])
-        plt.yticks([])
-def animate_dict(A, n_frames, ratio=1.5):
+        axes[n].imshow(a.reshape(im_shape), clim=(cmin, cmax), cmap='Greys_r')
+        axes[n].set_xticks([])
+        axes[n].set_yticks([])
+def animate_dict(A, n_frames, ratio=1.5, order='auto', out=None):
     n_time, n_dim, n_dict = A.shape
     skip = n_time // n_frames
-    order = (-np.linalg.norm(A[-1], axis=0)).argsort()
+    if order == 'auto':
+        order = (-np.linalg.norm(A[-1], axis=0)).argsort()
+    elif order is None:
+        order = np.arange(n_dict)
 
     cmin = -min(-A.min(), A.max())
     cmax = -cmin
@@ -417,7 +427,10 @@ def animate_dict(A, n_frames, ratio=1.5):
         fig.suptitle(n)
 
     anim = animation.FuncAnimation(fig, animate, frames=n_frames, interval=100, repeat=True)
-    plt.show()
+    if out is None:
+        plt.show()
+    else:
+        anim.save(out)
 
 if __name__ == '__main__':
     soln = Solutions_H5('./results/hv_dsc_4x4/soln.h5')

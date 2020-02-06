@@ -20,21 +20,21 @@ def plot_samples(pi=.3, l1=1, sigma=0):
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
 
-DICT = 'learned'
+DICT = 'none'
 EXP = 'lsc'
 
 # Define loader
 H = W = 8
 N_DIM = H * W
 OC = 1
-N_BATCH = 10 * (H * W)
+N_BATCH = 20 * (H * W)
 N_DICT = OC * (H + W)
-PI = 0.01
+PI = 1
 SIGMA = .5
 LARGE = False
 L1 = 1.0
 loader = BarsLoader(H, W, N_BATCH, p=PI, sigma=SIGMA, l1=L1)
-NORM_A = True
+NORM_A = False
 NAME = 'no_norm_A'
 NAME = None
 if DICT == 'learned':
@@ -49,8 +49,8 @@ if DICT in ['learned', 'random']:
 N_S = N_S
 ETA_A = 0.05
 if DICT in ['learned', 'random']:
-    ETA_A = 1e-20
-ETA_S = 0.02
+    ETA_A = 1e-99
+ETA_S = 0.05
 
 
 # model params
@@ -69,6 +69,7 @@ base_dir = f'bars_{EXP}'
 # Define model, solver
 model = CTSCModel(**model_params)
 model = model.to('cuda')
+model.A.data *= 0.2
 if DICT == 'learned':
     model.A.data = loader.bases.t().to('cuda')
 solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S, return_params=True)
@@ -88,7 +89,7 @@ elif EXP == 'lsc':
 solver = CTSCSolver(model, **solver_params)
 dir_path = solver.get_dir_path(base_dir, name=NAME, overwrite=True)
 #solver.get_dir_path(base_dir)
-soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, out_energy=False, normalize_A=NORM_A)
+soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, out_energy=False, normalize_A=NORM_A, report_norm_pi=True)
 solver.save_soln(soln)
 
 X = soln['x'][:]
