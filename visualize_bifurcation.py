@@ -32,13 +32,14 @@ def plot_dict(A):
     plt.xticks([])
     plt.yticks([])
 
-exp = 'lsc'
+exp = 'lca'
 
 if exp == 'lsc':
     path = get_timestamped_dir(load=True, base_dir='bars_lsc')
     analysis = SolnAnalysis(path)
 elif exp == 'lca':
     path = get_timestamped_dir(load=True, base_dir='bars_lca', dir_name='no_norm_A')
+    path = get_timestamped_dir(load=True, base_dir='bars_lca', dir_name=None)
     analysis = SolnAnalysis(path)
 
 A = analysis.A
@@ -72,4 +73,4 @@ def animate(n):
 
 anim = animation.FuncAnimation(fig, animate, frames=N_FRAMES, interval = 100, repeat=True )
 #plt.show()
-anim.save(f'./figures/bars_{exp}_oc_1_nonorm.mp4')
+anim.save(f'./figures/bars_{exp}_oc_2_norm.mp4')

@@ -6,6 +6,7 @@ from visualization import show_img_XRA, plot_dict
 import matplotlib.pylab as plt
 from soln_analysis import SolnAnalysis
 
+DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
 DIM = 8
 OC = 4
 BATCH_FRAC = 2
@@ -52,8 +53,8 @@ solver_params['tau_u0'] = 5e7
 
 # Define model, solver
 model = CTSCModel(**model_params)
-model = model.to('cuda')
-model.A.data = th.tensor(A_load).to('cuda')
+model = model.to(DEVICE)
+model.A.data = th.tensor(A_load).to(DEVICE)
 
 solver = CTSCSolver(model, **solver_params)
 dir_path = solver.get_dir_path(ease_dir)
