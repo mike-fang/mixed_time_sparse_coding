@@ -27,10 +27,10 @@ EXP = 'lsc'
 # Define loader
 H = W = 8
 N_DIM = H * W
-OC = 2
+OC = 1
 N_BATCH = 8 * (H * W)
 N_DICT = OC * (H + W)
-PI = .7
+PI = .3
 SIGMA = .5
 LARGE = False
 L1 = 1.0

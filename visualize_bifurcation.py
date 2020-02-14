@@ -32,7 +32,7 @@ def plot_dict(A):
     plt.xticks([])
     plt.yticks([])
 
-exp = 'lca'
+exp = 'lsc'
 
 if exp == 'lsc':
     path = get_timestamped_dir(load=True, base_dir='bars_lsc')
@@ -71,4 +71,5 @@ def animate(n):
 
 
 anim = animation.FuncAnimation(fig, animate, frames=N_FRAMES, interval = 100, repeat=True )
-anim.save(f'./figures/bars_{exp}_oc_2_nonorm.mp4')
+#plt.show()
+anim.save(f'./figures/bars_{exp}_oc_1_nonorm.mp4')
