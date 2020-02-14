@@ -32,8 +32,15 @@ def plot_dict(A):
     plt.xticks([])
     plt.yticks([])
 
-lsc_path = get_timestamped_dir(load=True, base_dir='bars_lsc')
-analysis = SolnAnalysis(lsc_path)
+exp = 'lca'
+
+if exp == 'lsc':
+    path = get_timestamped_dir(load=True, base_dir='bars_lsc')
+    analysis = SolnAnalysis(path)
+elif exp == 'lca':
+    path = get_timestamped_dir(load=True, base_dir='bars_lca', dir_name=None)
+    analysis = SolnAnalysis(path)
+
 A = analysis.A
 A_norm = np.linalg.norm(A, axis=1).T
 order = (- A_norm[:, -1]).argsort()
@@ -55,6 +62,7 @@ def animate(n):
     for a in A_norm:
         plt.plot(time[:n*skip], a[:n*skip], 'k', lw=.5)
     plt.xlim(0, time.max())
+    plt.ylim(0, 1.5)
     plt.xlabel('Time')
     plt.ylabel('Dict. Element Norm')
 
@@ -63,4 +71,5 @@ def animate(n):
 
 
 anim = animation.FuncAnimation(fig, animate, frames=N_FRAMES, interval = 100, repeat=True )
-anim.save('./figures/bars_lsc_norm.mp4')
+plt.show()
+anim.save(f'./figures/bars_{exp}_oc_1_norm.mp4')
