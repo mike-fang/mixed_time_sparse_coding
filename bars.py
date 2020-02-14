@@ -20,16 +20,17 @@ def plot_samples(pi=.3, l1=1, sigma=0):
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
 
-DICT = 'none'
+DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
+DICT = None
 EXP = 'lsc'
 
 # Define loader
 H = W = 8
 N_DIM = H * W
-OC = 1
-N_BATCH = 20 * (H * W)
+OC = 2
+N_BATCH = 8 * (H * W)
 N_DICT = OC * (H + W)
-PI = 1
+PI = .7
 SIGMA = .5
 LARGE = False
 L1 = 1.0
@@ -42,12 +43,12 @@ if DICT == 'learned':
 elif DICT == 'random':
     NAME = 'random_dict'
 
-N_S = 400
-N_A = 400
+N_S = 200
+N_A = 800
 if DICT in ['learned', 'random']:
     N_A = 100
 N_S = N_S
-ETA_A = 0.05
+ETA_A = 0.1
 if DICT in ['learned', 'random']:
     ETA_A = 1e-99
 ETA_S = 0.05
@@ -68,10 +69,12 @@ base_dir = f'bars_{EXP}'
 
 # Define model, solver
 model = CTSCModel(**model_params)
-model = model.to('cuda')
-model.A.data *= 0.2
+model = model.to(DEVICE)
+
+model.A.data *= th.linspace(0.3, 1.2, N_DICT)[None, :]
+#model.A.data *= 1.2
 if DICT == 'learned':
-    model.A.data = loader.bases.t().to('cuda')
+    model.A.data = loader.bases.t().to(DEVICE)
 solver_params = CTSCSolver.get_dsc(model, n_A=N_A, n_s=N_S, eta_A=ETA_A, eta_s=ETA_S, return_params=True)
 if EXP == 'dsc':
     pass

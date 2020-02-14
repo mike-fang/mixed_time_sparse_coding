@@ -11,7 +11,7 @@ DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
 # Define loader
 H = W = 8
 N_DIM = H * W
-OC = 1
+OC = 2
 N_BATCH = 10 * (H * W)
 N_DICT = OC * (H + W)
 PI = 0.3

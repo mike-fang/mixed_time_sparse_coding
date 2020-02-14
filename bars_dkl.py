@@ -104,7 +104,7 @@ def plot_dkl_x(out=False):
 
 if __name__ == '__main__':
     plt.figure(figsize=(8, 3))
-    #plot_s_dkl(out=False)
-    plot_s_corr(out=True)
+    plot_s_dkl(out=False)
+    #plot_s_corr(out=True)
     plt.gcf().subplots_adjust(bottom=0.18)
     plt.show()

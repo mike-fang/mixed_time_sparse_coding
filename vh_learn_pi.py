@@ -9,7 +9,7 @@ from soln_analysis import SolnAnalysis
 
 DIM = 8
 OC = 2
-for OC in [1, 1.5, 2, 2.5, 3, 3.5, 4]:
+for OC in [6]:
     BATCH_FRAC = 2
     H = W = DIM
     N_DIM = H * W
@@ -55,9 +55,9 @@ for OC in [1, 1.5, 2, 2.5, 3, 3.5, 4]:
 
     solver = CTSCSolver(model, **solver_params)
     dir_path = solver.get_dir_path(base_dir)
-    soln = solver.solve(loader, soln_T=N_S * 2, soln_offset=-1, normalize_A=False)
+    soln = solver.solve(loader, soln_T=N_S * 20, soln_offset=-1, normalize_A=False, report_norm_pi=True )
     solver.save_soln(soln)
-    continue
+    cntinue
 
     A = soln['A'][:]
     plot_dict(A[-1], (8, 8), int(OC * 2), 8)

@@ -41,14 +41,15 @@ def plot_lsc_dict(out=False):
 
 #lsc_path = f'results/bars_lsc/no_norm_A'
 #lsc_path = f'results/bars_learn_pi/no_norm_A'
-lsc_path = f'results/bars_learn_pi/fixed_pi'
+#lsc_path = f'results/bars_learn_pi/fixed_pi'
 #lspath = f'results/bars_learn_pi/learn_pi'
+lsc_path = get_timestamped_dir(load=True, base_dir='bars_lsc')
 
 
 if True:
     analysis = SolnAnalysis(lsc_path)
     plot_lsc_A_norm(False)
-    plot_lsc_pi(False, pi=0.3)
+    #plot_lsc_pi(False, pi=0.3)
     plot_lsc_dict(False)
 
 

@@ -8,8 +8,8 @@ from soln_analysis import SolnAnalysis
 from matplotlib import animation
 
 DIM = 8
-EXP = 'fixed_pi'
-OC = 4
+EXP = 'learn_pi'
+OC = 6
 OC = f'{OC}'.replace('.', 'p')
 def plot_dicts(out=False, sort=False):
     A = analysis.A[-1]

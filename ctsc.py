@@ -32,7 +32,7 @@ def get_time_interval(tspan, N=None, dt=None):
         idx = np.argmin(np.abs(tspan - n*dt))
         interval[idx] = True
     return interval
-def get_timestamped_dir(load=False, base_dir=None, dir_name=None):
+def get_timestamped_dir(load=False, base_dir=None, dir_name=None, index=-1):
     if dir_name is not None:
         dir_name = os.path.join(FILE_DIR, 'results', base_dir, dir_name)
         if not load:
@@ -45,7 +45,7 @@ def get_timestamped_dir(load=False, base_dir=None, dir_name=None):
         search_str = os.path.join(FILE_DIR, 'results', base_dir, 'exp_*')
         tmp_files = glob(search_str)
         tmp_files.sort()
-        dir_name = tmp_files[-1]
+        dir_name = tmp_files[index]
     else:
         time_stamp = f'exp_{time():.0f}'
         dir_name = os.path.join(FILE_DIR, 'results', base_dir, time_stamp)
