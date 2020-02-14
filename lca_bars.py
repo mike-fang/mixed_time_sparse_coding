@@ -14,7 +14,7 @@ from lca import *
 H = W = 8
 N_DIM = H * W
 N_BATCH = 10 * (H * W)
-N_DICT = (H + W)
+N_DICT = (H + W) * 2
 PI = 0.3
 SIGMA = .5
 loader = BarsLoader(H, W, N_BATCH, sigma=0.5, p=PI, numpy=True)
@@ -29,8 +29,8 @@ U0 = 1
 lca = LCAModel(n_dim=N_DIM, n_dict=N_DICT, n_batch=N_BATCH, u0=U0, sigma=SIGMA, positive=True)
 lca.A *= np.linspace(0.3, 1.2, N_DICT)[None, :]
 solver = LCASolver(lca, N_A, N_S, eta_A, eta_S)
-dir_path = solver.get_dir_path('bars_lca', name=None, overwrite=True)
-soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, normalize_A=True)
+dir_path = solver.get_dir_path('bars_lca', name='no_norm_A', overwrite=True)
+soln = solver.solve(loader, soln_T=N_S, soln_offset=-1, normalize_A=False)
 solver.save_soln(soln)
 X = soln['x'][:]
 R = soln['r'][:]

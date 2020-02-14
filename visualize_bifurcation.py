@@ -38,7 +38,7 @@ if exp == 'lsc':
     path = get_timestamped_dir(load=True, base_dir='bars_lsc')
     analysis = SolnAnalysis(path)
 elif exp == 'lca':
-    path = get_timestamped_dir(load=True, base_dir='bars_lca', dir_name=None)
+    path = get_timestamped_dir(load=True, base_dir='bars_lca', dir_name='no_norm_A')
     analysis = SolnAnalysis(path)
 
 A = analysis.A
@@ -62,7 +62,7 @@ def animate(n):
     for a in A_norm:
         plt.plot(time[:n*skip], a[:n*skip], 'k', lw=.5)
     plt.xlim(0, time.max())
-    plt.ylim(0, 1.5)
+    #plt.ylim(0, 1.5)
     plt.xlabel('Time')
     plt.ylabel('Dict. Element Norm')
 
@@ -71,5 +71,4 @@ def animate(n):
 
 
 anim = animation.FuncAnimation(fig, animate, frames=N_FRAMES, interval = 100, repeat=True )
-plt.show()
-anim.save(f'./figures/bars_{exp}_oc_1_norm.mp4')
+anim.save(f'./figures/bars_{exp}_oc_2_nonorm.mp4')
