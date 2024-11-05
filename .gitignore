@@ -3,3 +3,4 @@ misc/__pycache__/
 results/
 _tmp*
 vanhateren_imc/
+.venv/
